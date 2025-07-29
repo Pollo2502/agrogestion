@@ -1,0 +1,154 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Usuarios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/paneles-style.css' %}">
+</head>
+<body>
+<div class="d-flex" style="min-height: 100vh;">
+    <!-- Sidebar -->
+    <div class="bg-dark text-white" style="width: 250px;">
+        <div class="p-3 text-center border-bottom">
+            <img src="{% static 'images/logo.png' %}" alt="Logo" width="80" class="mb-2">
+            <h5>Usuarios - {{ user.nombre }}</h5>
+        </div>
+        <div class="list-group list-group-flush">
+            {% if 'usuarios' in permisos %}
+            <a href="{% url 'panel_control' %}" class="list-group-item list-group-item-action bg-dark text-white {% if request.resolver_match.url_name == 'panel_control' %}active{% endif %}">
+                <i class="fas fa-users me-2"></i>Usuarios
+            </a>
+            {% endif %}
+            {% if 'compras' in permisos %}
+            <a href="{% url 'requisiciones' %}" class="list-group-item list-group-item-action bg-dark text-white">
+                <i class="fas fa-file-invoice me-2"></i>Requisiciones
+            </a>
+            {% endif %}
+            {% if 'ordenes_compra' in permisos %}
+            <a href="{% url 'ordenes_compra' %}" class="list-group-item list-group-item-action bg-dark text-white">
+                <i class="fas fa-file-purchase-order me-2"></i>Órdenes de Compra
+            </a>
+            {% endif %}
+            {% if 'crear_requisiciones' in permisos %}
+            <a href="{% url 'crear_requisiciones' %}" class="list-group-item list-group-item-action bg-dark text-white {% if request.resolver_match.url_name == 'crear_requisiciones' %}active{% endif %}">
+                <i class="fas fa-plus-square me-2"></i>Crear Requisición
+            </a>
+            {% endif %}
+            <a href="{% url 'logout' %}" class="list-group-item list-group-item-action bg-dark text-white">
+                <i class="fas fa-power-off me-2"></i>Cerrar Sesión
+            </a>
+        </div>
+    </div>
+    <!-- Contenido principal -->
+    <div class="container mt-4">
+        <h2>Panel de Administración de Usuarios</h2>
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Botón para abrir el modal -->
+        <button class="btn btn-success mb-4" data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
+            <i class="fas fa-user-plus"></i> Crear nuevo usuario
+        </button>
+
+        <!-- Modal para crear usuario -->
+        <div class="modal fade" id="crearUsuarioModal" tabindex="-1" aria-labelledby="crearUsuarioModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="post">
+                {% csrf_token %}
+                <div class="modal-header">
+                  <h5 class="modal-title" id="crearUsuarioModalLabel">Crear nuevo usuario</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label">Nombre</label>
+                    <input type="text" name="nombre" class="form-control" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Contraseña</label>
+                    <input type="password" name="password" class="form-control" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Teléfono</label>
+                    <input type="text" name="telefono" class="form-control">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Permisos</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="permisos" value="es_admin" id="permiso_admin">
+                        <label class="form-check-label" for="permiso_admin">Administrador</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="permisos" value="puede_compras" id="permiso_compras">
+                        <label class="form-check-label" for="permiso_compras">Compras</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="permisos" value="puede_requisiciones" id="permiso_requisiciones">
+                        <label class="form-check-label" for="permiso_requisiciones">Crear Requisiciones</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                  <button type="submit" name="crear_usuario" class="btn btn-success">Crear</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <h4>Usuarios registrados</h4>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Teléfono</th>
+                            <th>Admin</th>
+                            <th>Compras</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in usuarios %}
+                        <tr>
+                            <td>{{ u.nombre }}</td>
+                            <td>{{ u.email }}</td>
+                            <td>{{ u.telefono }}</td>
+                            <td>{% if u.es_admin %}✔{% else %}✖{% endif %}</td>
+                            <td>{% if u.puede_compras %}✔{% else %}✖{% endif %}</td>
+                            <td>
+                                {% if u.id != user.id %}
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="eliminar_id" value="{{ u.id }}">
+                                    <button type="submit" name="eliminar_usuario" class="btn btn-danger btn-sm">Eliminar</button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted">Tú</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div> <!-- cierra container -->
+</div> <!-- cierra d-flex -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
