@@ -15,8 +15,10 @@ class RequisicionService:
             descripcion = request.POST.get('descripcion', '').strip()
             archivo = request.FILES.get('archivo')
             importancia = request.POST.get('importancia', 'N')
+            usuario_com_id = request.POST.get('usuario_com_id')  # <-- nuevo
+            directivo_id = request.POST.get('directivo_id')  # <-- nuevo
 
-            if not all([codigo, fecha_requerida, archivo]):
+            if not all([codigo, fecha_requerida, archivo, usuario_com_id, directivo_id]):
                 messages.error(request, 'Todos los campos obligatorios deben ser completados')
                 return False
 
@@ -24,14 +26,18 @@ class RequisicionService:
                 messages.error(request, 'El código ya está en uso')
                 return False
 
+            usuario_com = User.objects.get(id=usuario_com_id)
+            directivo = User.objects.get(id=directivo_id)
+
             req = Requisicion(
                 codigo=codigo,
                 fecha_requerida=fecha_requerida,
                 descripcion=descripcion,
-                usuario=user,
+                usuario=usuario_com,  # <-- asignar comprador
                 creador_req=user.nombre,
                 archivo=archivo,
                 importancia=importancia,
+                directivo=directivo,  # <-- asignar directivo
             )
             req.save()
             messages.success(request, f'Requisición {codigo} creada exitosamente')

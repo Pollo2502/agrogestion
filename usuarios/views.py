@@ -20,9 +20,9 @@ def login(request):
                 if user.es_admin:
                     return redirect('panel_control')
                 elif user.puede_compras:
-                    return redirect('compras')
-                elif user.puede_requisiciones:
                     return redirect('requisiciones')
+                elif user.puede_requisiciones:
+                    return redirect('crear_requisiciones')
                 else:
                     messages.error(request, 'No tiene permisos asignados')
             else:
@@ -62,7 +62,7 @@ def panel_control(request):
             es_admin = 'es_admin' in permisos
             puede_compras = 'puede_compras' in permisos
             puede_requisiciones = 'puede_requisiciones' in permisos
-            nuevo_usuario, error = crear_usuario(nombre, password, email, telefono, es_admin, puede_compras)
+            nuevo_usuario, error = crear_usuario(nombre, password, email, telefono, es_admin, puede_compras, puede_requisiciones)
             if error:
                 messages.error(request, error)
             else:
@@ -88,8 +88,10 @@ def get_permisos(user):
         permisos.append('ordenes_compra')
     if user.puede_requisiciones:
         permisos.append('crear_requisiciones')
+    if user.puede_aprobar:
+        permisos.append('aprobar_requisiciones')
     return permisos
 
 def logout(request):
     request.session.flush()
-    return redirect('index')
+    return redirect('login')

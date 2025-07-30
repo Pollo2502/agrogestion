@@ -14,6 +14,8 @@ def get_permisos(user):
         permisos.append('ordenes_compra')
     if user.puede_requisiciones:
         permisos.append('crear_requisiciones')
+    if user.puede_aprobar:
+        permisos.append('aprobar_requisiciones')
     return permisos
 
 def requisiciones(request):

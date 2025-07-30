@@ -9,6 +9,7 @@ class User(models.Model):
     es_admin = models.BooleanField(default=False)
     puede_compras = models.BooleanField(default=False)
     puede_requisiciones = models.BooleanField(default=False)
+    puede_aprobar = models.BooleanField(default=False)  # <-- Nuevo campo
 
     def __str__(self):
         return self.nombre

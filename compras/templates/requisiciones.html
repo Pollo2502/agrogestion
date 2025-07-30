@@ -38,6 +38,11 @@
                 <i class="fas fa-plus-square me-2"></i>Crear Requisición
             </a>
             {% endif %}
+            {% if 'aprobar_requisiciones' in permisos %}
+            <a href="{% url 'aprobar_requisiciones' %}" class="list-group-item list-group-item-action bg-dark text-white {% if request.resolver_match.url_name == 'aprobar_requisiciones' %}active{% endif %}">
+                <i class="fas fa-check-square me-2"></i>Aprobar Requisiciones
+            </a>
+            {% endif %}
             <a href="{% url 'logout' %}" class="list-group-item list-group-item-action bg-dark text-white">
                 <i class="fas fa-power-off me-2"></i>Cerrar Sesión
             </a>

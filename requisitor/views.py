@@ -21,6 +21,9 @@ def crear_requisiciones(request):
 
     permisos = get_permisos(user)
 
+    compradores = User.objects.filter(puede_compras=True)
+    directivos = User.objects.filter(puede_aprobar=True)  # <-- agrega esto
+
     # CRUD actions
     if request.method == 'POST':
         accion = request.POST.get('accion')
@@ -34,7 +37,9 @@ def crear_requisiciones(request):
     return render(request, 'crear_requisiciones.html', {
         'permisos': permisos,
         'user': user,
-        'requisiciones': requisiciones
+        'requisiciones': requisiciones,
+        'compradores': compradores,
+        'directivos': directivos,  # <-- pásalo al template
     })
 
 def logout(request):
@@ -50,4 +55,6 @@ def get_permisos(user):
         permisos.append('ordenes_compra')
     if user.puede_requisiciones:
         permisos.append('crear_requisiciones')
+    if user.puede_aprobar:
+        permisos.append('aprobar_requisiciones')
     return permisos
