@@ -30,9 +30,11 @@ def requisiciones(request):
         return redirect('login')
 
     permisos = get_permisos(user)
-    requisiciones = Requisicion.objects.all()
-
-    # Puedes agregar más lógica aquí si lo necesitas
+    # Solo mostrar requisiciones aprobadas al comprador
+    if user.puede_compras and not user.es_admin:
+        requisiciones = Requisicion.objects.filter(estado='A')
+    else:
+        requisiciones = Requisicion.objects.all()
 
     return render(request, 'requisiciones.html', {'permisos': permisos, 'user': user, 'requisiciones': requisiciones})
 

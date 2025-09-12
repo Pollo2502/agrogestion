@@ -4,156 +4,353 @@
 <head>
     <meta charset="UTF-8">
     <title>Panel de Usuarios</title>
+    <link rel="shortcut icon" href="{% static 'images/favicon.png' %}" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/paneles-style.css' %}">
 </head>
 <body>
-<div class="d-flex" style="min-height: 100vh;">
-    <!-- Sidebar -->
-    <div class="bg-dark text-white" style="width: 250px;">
-        <div class="p-3 text-center border-bottom">
-            <img src="{% static 'images/logo.png' %}" alt="Logo" width="80" class="mb-2">
-            <h5>Usuarios - {{ user.nombre }}</h5>
-        </div>
-        <div class="list-group list-group-flush">
-            {% if 'usuarios' in permisos %}
-            <a href="{% url 'panel_control' %}" class="list-group-item list-group-item-action bg-dark text-white {% if request.resolver_match.url_name == 'panel_control' %}active{% endif %}">
-                <i class="fas fa-users me-2"></i>Usuarios
-            </a>
-            {% endif %}
-            {% if 'compras' in permisos %}
-            <a href="{% url 'requisiciones' %}" class="list-group-item list-group-item-action bg-dark text-white">
-                <i class="fas fa-file-invoice me-2"></i>Requisiciones
-            </a>
-            {% endif %}
-            {% if 'ordenes_compra' in permisos %}
-            <a href="{% url 'ordenes_compra' %}" class="list-group-item list-group-item-action bg-dark text-white">
-                <i class="fas fa-file-purchase-order me-2"></i>Órdenes de Compra
-            </a>
-            {% endif %}
-            {% if 'crear_requisiciones' in permisos %}
-            <a href="{% url 'crear_requisiciones' %}" class="list-group-item list-group-item-action bg-dark text-white {% if request.resolver_match.url_name == 'crear_requisiciones' %}active{% endif %}">
-                <i class="fas fa-plus-square me-2"></i>Crear Requisición
-            </a>
-            {% endif %}
-            {% if 'aprobar_requisiciones' in permisos %}
-            <a href="{% url 'aprobar_requisiciones' %}" class="list-group-item list-group-item-action bg-dark text-white {% if request.resolver_match.url_name == 'aprobar_requisiciones' %}active{% endif %}">
-                <i class="fas fa-check-square me-2"></i>Aprobar Requisiciones
-            </a>
-            {% endif %}
-            <a href="{% url 'logout' %}" class="list-group-item list-group-item-action bg-dark text-white">
-                <i class="fas fa-power-off me-2"></i>Cerrar Sesión
-            </a>
-        </div>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <button class="btn btn-outline-light me-3" id="sidebarToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    <img src="{% static 'images/Agrogestion.png' %}" alt="Agrogestion" height="50" class="me-2">
+    <div class="ms-auto d-flex align-items-center">
+      <a href="{% url 'logout' %}" class="btn btn-outline-light">
+        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+      </a>
     </div>
-    <!-- Contenido principal -->
-    <div class="container mt-4">
-        <h2>Panel de Administración de Usuarios</h2>
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
+  </div>
+</nav>
 
-        <!-- Botón para abrir el modal -->
-        <button class="btn btn-success mb-4" data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
-            <i class="fas fa-user-plus"></i> Crear nuevo usuario
-        </button>
+<div class="d-flex" id="wrapper" style="min-height: 100vh;">
+  <!-- Sidebar -->
+  <div class="bg-dark text-white" id="sidebar-wrapper" style="width: 250px;">
+    <div class="p-3 text-center border-bottom">
+      <img src="{% static 'images/logo.png' %}" alt="Logo" width="80" class="mb-2">
+      <h5>{{ user.nombre }}</h5>
+    </div>
+    <div class="list-group list-group-flush">
+      {% if 'usuarios' in permisos %}
+      <a href="{% url 'panel_control' %}" class="list-group-item bg-dark text-white"><i class="fas fa-users me-2"></i>Usuarios</a>
+      {% endif %}
+      {% if 'compras' in permisos %}
+      <a href="{% url 'requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-invoice me-2"></i>Requisiciones</a>
+      {% endif %}
+      {% if 'ordenes_compra' in permisos %}
+      <a href="{% url 'ordenes_compra' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-purchase-order me-2"></i>Órdenes de Compra</a>
+      {% endif %}
+      {% if 'crear_requisiciones' in permisos %}
+      <a href="{% url 'crear_requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-plus-square me-2"></i>Crear Requisición</a>
+      {% endif %}
+      {% if 'aprobar_requisiciones' in permisos %}
+      <a href="{% url 'aprobar_requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-check-square me-2"></i>Aprobar Requisiciones</a>
+      {% endif %}
+      {% if 'panel_gerente' in permisos %}
+      <a href="{% url 'panel_gerente' %}" class="list-group-item bg-dark text-white"><i class="fas fa-user-tie me-2"></i>Panel Gerente</a>
+      {% endif %}
+      <a href="{% url 'logout' %}" class="list-group-item bg-dark text-white"><i class="fas fa-power-off me-2"></i>Cerrar Sesión</a>
+    </div>
+  </div>
+  <!-- Contenido principal -->
+  <div class="flex-grow-1 p-4">
+    <h2>Panel de Administración de Usuarios</h2>
+    <!-- Botón para abrir el modal -->
+    <button class="btn btn-success mb-4" data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
+        <i class="fas fa-user-plus"></i> Crear nuevo usuario
+    </button>
 
-        <!-- Modal para crear usuario -->
-        <div class="modal fade" id="crearUsuarioModal" tabindex="-1" aria-labelledby="crearUsuarioModalLabel" aria-hidden="true">
-          <div class="modal-dialog">
-            <div class="modal-content">
-              <form method="post">
-                {% csrf_token %}
-                <div class="modal-header">
-                  <h5 class="modal-title" id="crearUsuarioModalLabel">Crear nuevo usuario</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                  <div class="mb-3">
-                    <label class="form-label">Nombre</label>
-                    <input type="text" name="nombre" class="form-control" required>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Contraseña</label>
-                    <input type="password" name="password" class="form-control" required>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input type="email" name="email" class="form-control">
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Teléfono</label>
-                    <input type="text" name="telefono" class="form-control">
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Permisos</label>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="permisos" value="es_admin" id="permiso_admin">
-                        <label class="form-check-label" for="permiso_admin">Administrador</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="permisos" value="puede_compras" id="permiso_compras">
-                        <label class="form-check-label" for="permiso_compras">Compras</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="permisos" value="puede_requisiciones" id="permiso_requisiciones">
-                        <label class="form-check-label" for="permiso_requisiciones">Crear Requisiciones</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                  <button type="submit" name="crear_usuario" class="btn btn-success">Crear</button>
-                </div>
-              </form>
+    <!-- Modal para crear usuario -->
+    <div class="modal fade" id="crearUsuarioModal" tabindex="-1" aria-labelledby="crearUsuarioModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header">
+              <h5 class="modal-title" id="crearUsuarioModalLabel">Crear nuevo usuario</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-          </div>
-        </div>
-
-        <h4>Usuarios registrados</h4>
-        <div class="card">
-            <div class="card-body">
-                <table class="table table-bordered table-hover">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Nombre</th>
-                            <th>Email</th>
-                            <th>Teléfono</th>
-                            <th>Admin</th>
-                            <th>Compras</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for u in usuarios %}
-                        <tr>
-                            <td>{{ u.nombre }}</td>
-                            <td>{{ u.email }}</td>
-                            <td>{{ u.telefono }}</td>
-                            <td>{% if u.es_admin %}✔{% else %}✖{% endif %}</td>
-                            <td>{% if u.puede_compras %}✔{% else %}✖{% endif %}</td>
-                            <td>
-                                {% if u.id != user.id %}
-                                <form method="post" style="display:inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="eliminar_id" value="{{ u.id }}">
-                                    <button type="submit" name="eliminar_usuario" class="btn btn-danger btn-sm">Eliminar</button>
-                                </form>
-                                {% else %}
-                                <span class="text-muted">Tú</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">Nombre</label>
+                <input type="text" name="nombre" class="form-control" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Contraseña</label>
+                <input type="password" name="password" class="form-control" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Teléfono</label>
+                <input type="text" name="telefono" class="form-control">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Centro de Costos (CECO)</label>
+                <select name="ceco" class="form-select" required>
+                    <option value="">Seleccione...</option>
+                    {% for ceco in cecos %}
+                    <option value="{{ ceco.id }}">{{ ceco.nombre }}</option>
+                    {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Permisos</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="permisos" value="es_admin" id="permiso_admin">
+                    <label class="form-check-label" for="permiso_admin">Administrador</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="permisos" value="puede_compras" id="permiso_compras">
+                    <label class="form-check-label" for="permiso_compras">Compras</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="permisos" value="puede_requisiciones" id="permiso_requisiciones">
+                    <label class="form-check-label" for="permiso_requisiciones">Crear Requisiciones</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="permisos" value="puede_aprobar" id="permiso_aprobar">
+                    <label class="form-check-label" for="permiso_aprobar">Aprobar Requisiciones</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="permisos" value="es_gerente" id="permiso_gerente">
+                    <label class="form-check-label" for="permiso_gerente">Gerente (preaprueba requisiciones)</label>
+                </div>
+              </div>
+              <div class="mb-3" id="firmaField" style="display:none;">
+                <label for="firma" class="form-label">Firma (PNG)</label>
+                <input class="form-control" type="file" name="firma" id="firma" accept="image/png">
+              </div>
             </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" name="crear_usuario" class="btn btn-success">Crear</button>
+            </div>
+          </form>
         </div>
-    </div> <!-- cierra container -->
+      </div>
+    </div>
+
+    <!-- Botón para abrir el modal de crear CECO -->
+    <button class="btn btn-primary mb-4 ms-2" data-bs-toggle="modal" data-bs-target="#crearCecoModal">
+        <i class="fas fa-plus"></i> Crear CECO
+    </button>
+
+    <!-- Modal para crear CECO -->
+    <div class="modal fade" id="crearCecoModal" tabindex="-1" aria-labelledby="crearCecoModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form method="post">
+            {% csrf_token %}
+            <div class="modal-header">
+              <h5 class="modal-title" id="crearCecoModalLabel">Crear nuevo CECO</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">Nombre del CECO</label>
+                <input type="text" name="nombre_ceco" class="form-control" required>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" name="crear_ceco" class="btn btn-primary">Crear</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <h4>Usuarios registrados</h4>
+    <!-- Ejemplo de tabla de usuarios con acciones -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Permisos</th>
+                    <th>Firma</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                    <td>{{ usuario.id }}</td>
+                    <td>{{ usuario.nombre }}</td>
+                    <td>{{ usuario.email }}</td>
+                    <td>{{ usuario.telefono }}</td>
+                    <td>
+                        {% if usuario.es_admin %}<span class="badge bg-primary">Admin</span> {% endif %}
+                        {% if usuario.puede_compras %}<span class="badge bg-info text-dark">Compras</span> {% endif %}
+                        {% if usuario.puede_requisiciones %}<span class="badge bg-success">Requisiciones</span> {% endif %}
+                        {% if usuario.puede_aprobar %}<span class="badge bg-warning text-dark">Aprobar</span> {% endif %}
+                        {% if usuario.es_gerente %}<span class="badge bg-secondary">Gerente</span> {% endif %}
+                    </td>
+                    <td>
+                        {% if usuario.firma %}
+                            <img src="{{ usuario.firma.url }}" alt="Firma" width="50">
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#verUsuarioModal{{ usuario.id }}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editarUsuarioModal{{ usuario.id }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <form method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="eliminar_id" value="{{ usuario.id }}">
+                                <button type="submit" name="eliminar_usuario" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Seguro que deseas eliminar este usuario?');">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Modal Editar Usuario -->
+                <div class="modal fade" id="editarUsuarioModal{{ usuario.id }}" tabindex="-1" aria-labelledby="editarUsuarioModalLabel{{ usuario.id }}" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="editarUsuarioModalLabel{{ usuario.id }}">Editar Usuario</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        </div>
+                        <div class="modal-body">
+                          <input type="hidden" name="editar_id" value="{{ usuario.id }}">
+                          <div class="mb-3">
+                            <label for="nombre{{ usuario.id }}" class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="nombre{{ usuario.id }}" name="nombre" value="{{ usuario.nombre }}" required>
+                          </div>
+                          <div class="mb-3">
+                            <label for="email{{ usuario.id }}" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email{{ usuario.id }}" name="email" value="{{ usuario.email }}">
+                          </div>
+                          <div class="mb-3">
+                            <label for="telefono{{ usuario.id }}" class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="telefono{{ usuario.id }}" name="telefono" value="{{ usuario.telefono }}">
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Centro de Costos (CECO)</label>
+                            <select name="ceco" class="form-select" required>
+                                <option value="">Seleccione...</option>
+                                {% for ceco in cecos %}
+                                <option value="{{ ceco.id }}" {% if ceco.id == usuario.ceco_id %}selected{% endif %}>{{ ceco.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Permisos</label><br>
+                            <div class="form-check form-check-inline">
+                              <input class="form-check-input" type="checkbox" name="permisos" value="es_admin" id="admin{{ usuario.id }}" {% if usuario.es_admin %}checked{% endif %}>
+                              <label class="form-check-label" for="admin{{ usuario.id }}">Admin</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                              <input class="form-check-input" type="checkbox" name="permisos" value="puede_compras" id="compras{{ usuario.id }}" {% if usuario.puede_compras %}checked{% endif %}>
+                              <label class="form-check-label" for="compras{{ usuario.id }}">Compras</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                              <input class="form-check-input" type="checkbox" name="permisos" value="puede_requisiciones" id="requisiciones{{ usuario.id }}" {% if usuario.puede_requisiciones %}checked{% endif %}>
+                              <label class="form-check-label" for="requisiciones{{ usuario.id }}">Requisiciones</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                              <input class="form-check-input permiso-aprobar" type="checkbox" name="permisos" value="puede_aprobar" id="aprobar{{ usuario.id }}" {% if usuario.puede_aprobar %}checked{% endif %}>
+                              <label class="form-check-label" for="aprobar{{ usuario.id }}">Aprobar</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                              <input class="form-check-input" type="checkbox" name="permisos" value="es_gerente" id="gerente{{ usuario.id }}" {% if usuario.es_gerente %}checked{% endif %}>
+                              <label class="form-check-label" for="gerente{{ usuario.id }}">Gerente</label>
+                            </div>
+                          </div>
+                          <div class="mb-3 firma-field" id="firmaField{{ usuario.id }}" style="{% if not usuario.puede_aprobar %}display:none;{% endif %}">
+                            <label for="firma{{ usuario.id }}" class="form-label">Firma (PNG)</label>
+                            <input class="form-control" type="file" name="firma" id="firma{{ usuario.id }}" accept="image/png">
+                            {% if usuario.firma %}
+                              <img src="{{ usuario.firma.url }}" alt="Firma actual" width="80" class="mt-2">
+                            {% endif %}
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                          <button type="submit" name="editar_usuario" class="btn btn-primary">Guardar Cambios</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                <!-- Fin Modal Editar Usuario -->
+
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+  </div> <!-- cierra container -->
 </div> <!-- cierra d-flex -->
+
+<!-- Notificaciones tipo toast -->
+<div aria-live="polite" aria-atomic="true" class="position-fixed top-0 end-0 p-3" style="z-index: 3000;">
+  {% for message in messages %}
+  <div class="toast align-items-center text-bg-{{ message.tags|default:'info' }} border-0 show mb-2" role="alert" aria-live="assertive" aria-atomic="true" id="toast-message-{{ forloop.counter }}">
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="fas fa-info-circle me-2"></i> {{ message }}
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Sidebar toggle
+  var sidebar = document.getElementById('sidebar-wrapper');
+  var toggleBtn = document.getElementById('sidebarToggle');
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', function() {
+      sidebar.classList.toggle('collapsed');
+      sidebar.classList.toggle('show');
+    });
+  }
+  // Toasts
+  var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+  toastElList.forEach(function(toastEl) {
+    var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    toast.show();
+  });
+});
+</script>
+<script>
+document.getElementById('permiso_aprobar').addEventListener('change', function() {
+    document.getElementById('firmaField').style.display = this.checked ? 'block' : 'none';
+});
+
+document.querySelectorAll('.permiso-aprobar').forEach(function(checkbox) {
+    checkbox.addEventListener('change', function() {
+        var id = this.id.replace('aprobar', '');
+        var firmaField = document.getElementById('firmaField' + id);
+        if (this.checked) {
+            firmaField.style.display = 'block';
+        } else {
+            firmaField.style.display = 'none';
+        }
+    });
+});
+</script>
 </body>
 </html>

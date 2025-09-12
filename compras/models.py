@@ -1,5 +1,5 @@
 from django.db import models
-from usuarios.models import User
+from usuarios.models import User, Ceco
 
 class Requisicion(models.Model):
     ESTADOS = (
@@ -23,6 +23,9 @@ class Requisicion(models.Model):
     creador_req = models.CharField(max_length=100, blank=True, null=True)
     importancia = models.CharField(max_length=1, choices=IMPORTANCIA_CHOICES, default='N')
     directivo = models.ForeignKey(User, on_delete=models.PROTECT, related_name='requisiciones_recibidas', null=True, blank=True)
+    ceco = models.ForeignKey(Ceco, on_delete=models.SET_NULL, null=True, blank=True, related_name='requisiciones')
+    gerente = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='requisiciones_preaprobadas')
+    estado_preaprobacion = models.CharField(max_length=1, choices=(('P', 'Pendiente'), ('A', 'Aprobada'), ('N', 'Negada')), default='P')
 
     class Meta:
         ordering = ['-fecha_registro']

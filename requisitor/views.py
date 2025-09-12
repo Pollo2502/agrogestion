@@ -11,6 +11,7 @@ from .crud import RequisicionService
 def crear_requisiciones(request):
     user_id = request.session.get('user_id')
     if not user_id:
+        # Redirige a login o muestra error
         messages.error(request, 'Debe iniciar sesión primero')
         return redirect('login')
     try:
@@ -58,3 +59,12 @@ def get_permisos(user):
     if user.puede_aprobar:
         permisos.append('aprobar_requisiciones')
     return permisos
+
+def tu_vista(request):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        messages.error(request, 'Debe iniciar sesión primero')
+        return redirect('login')
+    usuario = user  # El usuario autenticado pasado desde la vista
+    ceco = usuario.ceco
+    gerente = User.objects.filter(ceco=ceco, es_gerente=True).first()

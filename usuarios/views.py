@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password
-from .models import User
-from .crud import crear_usuario, obtener_usuarios, eliminar_usuario
+from .models import User, Ceco
+from .crud import crear_usuario, obtener_usuarios, eliminar_usuario, modificar_usuario, crear_ceco
 
 
 def login(request):
@@ -19,10 +19,14 @@ def login(request):
                 # Redirección según permisos
                 if user.es_admin:
                     return redirect('panel_control')
+                elif user.es_gerente:
+                    return redirect('panel_gerente')  # <-- Agregado para gerente
                 elif user.puede_compras:
                     return redirect('requisiciones')
                 elif user.puede_requisiciones:
                     return redirect('crear_requisiciones')
+                elif user.puede_aprobar:
+                    return redirect('aprobar_requisiciones')
                 else:
                     messages.error(request, 'No tiene permisos asignados')
             else:
@@ -52,17 +56,36 @@ def panel_control(request):
         messages.error(request, 'No tiene permisos de administrador')
         return redirect('login')
 
+    cecos = Ceco.objects.all()  # <-- Agrega esto
+
     if request.method == 'POST':
-        if 'crear_usuario' in request.POST:
+        if 'crear_ceco' in request.POST:
+            nombre_ceco = request.POST.get('nombre_ceco', '').strip()
+            ceco, error = crear_ceco(nombre_ceco)
+            if error:
+                messages.error(request, error)
+            else:
+                messages.success(request, 'CECO creado correctamente.')
+        elif 'crear_usuario' in request.POST:
             nombre = request.POST.get('nombre', '').strip()
             password = request.POST.get('password', '')
             email = request.POST.get('email', '')
             telefono = request.POST.get('telefono', '')
-            permisos = request.POST.getlist('permisos')
-            es_admin = 'es_admin' in permisos
-            puede_compras = 'puede_compras' in permisos
-            puede_requisiciones = 'puede_requisiciones' in permisos
-            nuevo_usuario, error = crear_usuario(nombre, password, email, telefono, es_admin, puede_compras, puede_requisiciones)
+            ceco_id = request.POST.get('ceco')
+            permisos_list = request.POST.getlist('permisos')
+            es_admin = 'es_admin' in permisos_list
+            puede_compras = 'puede_compras' in permisos_list
+            puede_requisiciones = 'puede_requisiciones' in permisos_list
+            puede_aprobar = 'puede_aprobar' in permisos_list
+            es_gerente = 'es_gerente' in permisos_list
+            firma = request.FILES.get('firma') if puede_aprobar else None
+            nuevo_usuario, error = crear_usuario(
+                nombre, password, email, telefono,
+                es_admin, puede_compras, puede_requisiciones, puede_aprobar,
+                es_gerente=es_gerente,
+                firma=firma,
+                ceco_id=ceco_id
+            )
             if error:
                 messages.error(request, error)
             else:
@@ -74,9 +97,39 @@ def panel_control(request):
                 messages.error(request, error)
             else:
                 messages.success(request, 'Usuario eliminado correctamente.')
+        elif 'editar_usuario' in request.POST:
+            editar_id = request.POST.get('editar_id')
+            nombre = request.POST.get('nombre', None)
+            email = request.POST.get('email', None)
+            telefono = request.POST.get('telefono', None)
+            ceco_id = request.POST.get('ceco')
+            permisos_list = request.POST.getlist('permisos')
+            es_admin = 'es_admin' in permisos_list
+            puede_compras = 'puede_compras' in permisos_list
+            puede_requisiciones = 'puede_requisiciones' in permisos_list
+            puede_aprobar = 'puede_aprobar' in permisos_list
+            es_gerente = 'es_gerente' in permisos_list
+            firma = request.FILES.get('firma') if puede_aprobar else None
 
+            user, error = modificar_usuario(
+                editar_id,
+                nombre=nombre,
+                email=email,
+                telefono=telefono,
+                es_admin=es_admin,
+                puede_compras=puede_compras,
+                puede_requisiciones=puede_requisiciones,
+                puede_aprobar=puede_aprobar,
+                es_gerente=es_gerente,
+                firma=firma,
+                ceco_id=ceco_id
+            )
+            if error:
+                messages.error(request, error)
+            else:
+                messages.success(request, 'Usuario modificado correctamente.')
     usuarios = obtener_usuarios()
-    return render(request, 'control.html', {'permisos': permisos, 'usuarios': usuarios, 'user': user})
+    return render(request, 'control.html', {'permisos': permisos, 'usuarios': usuarios, 'user': user, 'cecos': cecos})
 
 
 def get_permisos(user):

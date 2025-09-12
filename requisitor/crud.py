@@ -29,6 +29,9 @@ class RequisicionService:
             usuario_com = User.objects.get(id=usuario_com_id)
             directivo = User.objects.get(id=directivo_id)
 
+            # Usa el usuario autenticado correctamente
+            ceco = user.ceco
+            gerente = User.objects.filter(ceco=ceco, es_gerente=True).first()
             req = Requisicion(
                 codigo=codigo,
                 fecha_requerida=fecha_requerida,
@@ -38,6 +41,9 @@ class RequisicionService:
                 archivo=archivo,
                 importancia=importancia,
                 directivo=directivo,  # <-- asignar directivo
+                ceco=ceco,
+                gerente=gerente if gerente else None,
+                estado_preaprobacion='P' if gerente else 'A',  # Si hay gerente, pendiente; si no, aprobada
             )
             req.save()
             messages.success(request, f'Requisición {codigo} creada exitosamente')
