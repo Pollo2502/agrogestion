@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'requisitor',
     'directivo',
     'gerente',
-
+    'contabilidad',
 ]
 
 MIDDLEWARE = [

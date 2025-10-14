@@ -39,7 +39,7 @@
       <a href="{% url 'requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-invoice me-2"></i>Requisiciones</a>
       {% endif %}
       {% if 'ordenes_compra' in permisos %}
-      <a href="{% url 'ordenes_compra' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-purchase-order me-2"></i>Órdenes de Compra</a>
+      <a href="{% url 'ordenes_compra' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-invoice me-2"></i>Órdenes de Compra</a>
       {% endif %}
       {% if 'crear_requisiciones' in permisos %}
       <a href="{% url 'crear_requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-plus-square me-2"></i>Crear Requisición</a>
@@ -55,8 +55,151 @@
   </div>
   <!-- Contenido principal -->
   <div class="flex-grow-1 p-4">
-    <!-- Aquí va tu contenido principal y modales -->
-    {% comment %} Pega aquí el contenido de cada plantilla, incluyendo los modales {% endcomment %}
+    <h2 class="mb-4"><i class="fas fa-file-invoice me-2"></i>Órdenes de Compra</h2>
+
+    <!-- Botón para abrir el modal -->
+    <button class="btn btn-success mb-4" data-bs-toggle="modal" data-bs-target="#crearOrdenModal">
+      <i class="fas fa-plus"></i> Crear nueva orden de compra
+    </button>
+
+    <!-- Modal para crear nueva orden de compra -->
+    <div class="modal fade" id="crearOrdenModal" tabindex="-1" aria-labelledby="crearOrdenModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title" id="crearOrdenModalLabel">Crear nueva orden de compra</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Requisición aprobada</label>
+                  <select name="requisicion_id" class="form-select" required>
+                    <option value="">Seleccione...</option>
+                    {% for req in requisiciones_aprobadas %}
+                      <option value="{{ req.id }}">{{ req.codigo }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Orden de compra (PDF)</label>
+                  <input type="file" name="archivo_orden" class="form-control" accept="application/pdf" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Cuadro comparativo (PDF)</label>
+                  <input type="file" name="archivo_cuadro_comparativo" class="form-control" accept="application/pdf" required>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Presupuesto (PDF)</label>
+                  <input type="file" name="archivo_presupuesto" class="form-control" accept="application/pdf" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Documento de soporte (nota/factura) (PDF)</label>
+                  <input type="file" name="archivo_soporte" class="form-control" accept="application/pdf">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Tipo de soporte</label>
+                  <select name="tipo_soporte" class="form-select">
+                    <option value="">Seleccione (opcional)</option>
+                    <option value="nota">Nota de recepción</option>
+                    <option value="factura">Factura</option>
+                  </select>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label">Observaciones</label>
+                  <input type="text" name="observaciones" class="form-control">
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Crear Orden de Compra</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de órdenes de compra -->
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Código Req.</th>
+                <th>Orden de Compra</th>
+                <th>Cuadro Comparativo</th>
+                <th>Presupuesto</th>
+                <th>Documento Soporte</th>
+                <th>Estado</th>
+                <th>Observaciones</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for orden in ordenes %}
+              <tr>
+                <td>{{ orden.requisicion.codigo }}</td>
+                <td>
+                  {% if orden.archivo_orden %}
+                    <a href="{{ orden.archivo_orden.url }}" target="_blank"><i class="fas fa-file-pdf text-danger"></i></a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if orden.archivo_cuadro_comparativo %}
+                    <a href="{{ orden.archivo_cuadro_comparativo.url }}" target="_blank"><i class="fas fa-file-pdf text-primary"></i></a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if orden.archivo_presupuesto %}
+                    <a href="{{ orden.archivo_presupuesto.url }}" target="_blank"><i class="fas fa-file-pdf text-success"></i></a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if orden.archivo_soporte %}
+                    <a href="{{ orden.archivo_soporte.url }}" target="_blank" title="{{ orden.get_tipo_soporte_display }}">
+                      <i class="fas fa-file-pdf text-success"></i>
+                    </a>
+                  {% else %}
+                    <button class="btn btn-sm btn-primary btn-cargar-soporte"
+                            data-orden-id="{{ orden.id }}"
+                            data-tipo=""
+                            data-bs-toggle="modal" data-bs-target="#cargarSoporteModal">
+                      <i class="fas fa-upload"></i> Cargar Soporte
+                    </button>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if orden.estado == 'P' %}<span class="badge bg-warning text-dark">Pendiente</span>{% endif %}
+                  {% if orden.estado == 'A' %}<span class="badge bg-success">Aprobada</span>{% endif %}
+                  {% if orden.estado == 'N' %}<span class="badge bg-danger">Rechazada</span>{% endif %}
+                </td>
+                <td>{{ orden.observaciones }}</td>
+                <td>{{ orden.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                <td>
+                  <button class="btn btn-primary btn-sm btn-enviar-expediente"
+                          data-orden-id="{{ orden.id }}"
+                          data-bs-toggle="modal" data-bs-target="#enviarExpedienteModal">
+                    <i class="fas fa-file-archive"></i> Mandar Expediente
+                  </button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="9" class="text-center">No hay órdenes de compra registradas.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -73,6 +216,72 @@
   </div>
   {% endfor %}
 </div>
+
+<!-- Modal para cargar/modificar documento de soporte -->
+<div class="modal fade" id="cargarSoporteModal" tabindex="-1" aria-labelledby="cargarSoporteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" enctype="multipart/form-data" action="{% url 'cargar_soporte' %}">
+        {% csrf_token %}
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="cargarSoporteModalLabel">Cargar Documento de Soporte</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="orden_id" id="modalOrdenId">
+          <div class="mb-3">
+            <label class="form-label">Archivo soporte (PDF)</label>
+            <input type="file" name="archivo_soporte" id="modalArchivoSoporte" class="form-control" accept="application/pdf" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tipo de soporte</label>
+            <select name="tipo_soporte" id="modalTipoSoporte" class="form-select">
+              <option value="">Seleccione</option>
+              <option value="nota">Nota de recepción</option>
+              <option value="factura">Factura</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Guardar Soporte</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+    <!-- Modal para enviar expediente a contabilidad -->
+    <div class="modal fade" id="enviarExpedienteModal" tabindex="-1" aria-labelledby="enviarExpedienteModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form method="post" action="{% url 'enviar_expediente_a_contabilidad' %}">
+            {% csrf_token %}
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title" id="enviarExpedienteModalLabel">Enviar expediente a Contabilidad</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" name="orden_id" id="modalEnviarOrdenId">
+              <div class="mb-3">
+                <label class="form-label">Usuario de Contabilidad</label>
+                <select name="contabilidad_id" id="modalContabilidadSelect" class="form-select" required>
+                  <option value="">Seleccione...</option>
+                  {% for cu in contabilidad_users %}
+                    <option value="{{ cu.id }}">{{ cu.nombre }}{% if cu.nombre_completo %} - {{ cu.nombre_completo }}{% endif %}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <p class="text-muted small">Se generará un expediente ZIP con los archivos relacionados y se asignará al usuario seleccionado.</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-success">Enviar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -91,6 +300,26 @@ document.addEventListener('DOMContentLoaded', function() {
   toastElList.forEach(function(toastEl) {
     var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
     toast.show();
+  });
+  // rellenar modal con datos del botón
+  document.querySelectorAll('.btn-cargar-soporte').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var ordenId = btn.getAttribute('data-orden-id');
+      var tipo = btn.getAttribute('data-tipo') || '';
+      document.getElementById('modalOrdenId').value = ordenId;
+      document.getElementById('modalTipoSoporte').value = tipo;
+      document.getElementById('modalArchivoSoporte').value = ''; // limpiar input
+    });
+  });
+  // rellenar modal de enviar expediente
+  document.querySelectorAll('.btn-enviar-expediente').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var ordenId = btn.getAttribute('data-orden-id');
+      document.getElementById('modalEnviarOrdenId').value = ordenId;
+      // reset select
+      var sel = document.getElementById('modalContabilidadSelect');
+      if (sel) sel.selectedIndex = 0;
+    });
   });
 });
 </script>

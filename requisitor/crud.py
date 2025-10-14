@@ -4,6 +4,13 @@ from django.core.exceptions import ValidationError
 from django.contrib import messages
 from django.db import transaction
 from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from PyPDF2 import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import cm
+from io import BytesIO
+from django.utils import timezone
 
 class RequisicionService:
     @staticmethod
@@ -15,40 +22,89 @@ class RequisicionService:
             descripcion = request.POST.get('descripcion', '').strip()
             archivo = request.FILES.get('archivo')
             importancia = request.POST.get('importancia', 'N')
-            usuario_com_id = request.POST.get('usuario_com_id')  # <-- nuevo
-            directivo_id = request.POST.get('directivo_id')  # <-- nuevo
+            usuario_compras_id = request.POST.get('usuario_compras_id')  # Usuario encargado de compras
+            directivo_id = request.POST.get('directivo_id')  # Directivo asignado
 
-            if not all([codigo, fecha_requerida, archivo, usuario_com_id, directivo_id]):
+            if not all([codigo, fecha_requerida, archivo, usuario_compras_id, directivo_id]):
                 messages.error(request, 'Todos los campos obligatorios deben ser completados')
+                return False
+
+            # Only accept PDF files
+            if not archivo.name.lower().endswith('.pdf'):
+                messages.error(request, 'El archivo debe ser un PDF')
                 return False
 
             if Requisicion.objects.filter(codigo=codigo).exists():
                 messages.error(request, 'El código ya está en uso')
                 return False
 
-            usuario_com = User.objects.get(id=usuario_com_id)
-            directivo = User.objects.get(id=directivo_id)
+            usuario_compras = User.objects.get(id=usuario_compras_id)
+            directivo = User.objects.get(id=directivo_id)  # Verifica que el directivo exista
 
-            # Usa el usuario autenticado correctamente
+            # Usa el usuario autenticado como creador
             ceco = user.ceco
             gerente = User.objects.filter(ceco=ceco, es_gerente=True).first()
             req = Requisicion(
                 codigo=codigo,
                 fecha_requerida=fecha_requerida,
                 descripcion=descripcion,
-                usuario=usuario_com,  # <-- asignar comprador
-                creador_req=user.nombre,
+                usuario=user,  # Usuario que crea la requisición
+                usuario_compras=usuario_compras,  # Usuario encargado de compras
                 archivo=archivo,
                 importancia=importancia,
-                directivo=directivo,  # <-- asignar directivo
+                directivo=directivo,  # Asignar el directivo
                 ceco=ceco,
                 gerente=gerente if gerente else None,
-                estado_preaprobacion='P' if gerente else 'A',  # Si hay gerente, pendiente; si no, aprobada
+                estado_preaprobacion='P' if gerente else 'A',
             )
             req.save()
+            # Firmar el PDF con la firma del requisitor (a la izquierda de la firma del directivo)
+            try:
+                if user.firma and req.archivo and req.archivo.name.lower().endswith('.pdf'):
+                    original_pdf = req.archivo.path
+                    output_pdf = BytesIO()
+                    packet = BytesIO()
+                    can = canvas.Canvas(packet, pagesize=letter)
+
+                    # Configuración de la posición y dimensiones de la firma (igual que directivo, pero a la izquierda)
+                    firma_width = 3 * cm
+                    firma_height = 1.5 * cm
+                    page_width, page_height = letter
+                    x_directivo = (page_width - firma_width) / 2.5
+                    # place requisitor signature to the left of the directivo signature with small gap
+                    # move 1 cm further left as requested
+                    x_requisitor = max(0.5 * cm, x_directivo - firma_width - (0.5 * cm) - (3 * cm))
+                    y = 2.7 * cm
+
+                    # Dibuja la imagen de la firma del requisitor
+                    can.drawImage(user.firma.path, x_requisitor, y, width=firma_width, height=firma_height, mask='auto')
+                    can.save()
+                    packet.seek(0)
+                    firma_pdf = PdfReader(packet)
+
+                    # Leer el PDF original y agregar la firma en la última página
+                    reader = PdfReader(original_pdf)
+                    writer = PdfWriter()
+                    for i in range(len(reader.pages)):
+                        page = reader.pages[i]
+                        if i == len(reader.pages) - 1:
+                            page.merge_page(firma_pdf.pages[0])
+                        writer.add_page(page)
+
+                    writer.write(output_pdf)
+                    output_pdf.seek(0)
+                    # Reemplaza el archivo original por la versión firmada
+                    req.archivo.save(req.archivo.name, ContentFile(output_pdf.read()), save=False)
+                    req.save()
+            except Exception as e:
+                # No interrumpir la creación si la firma falla, pero notificar
+                messages.warning(request, f'No fue posible firmar automáticamente el PDF: {e}')
             messages.success(request, f'Requisición {codigo} creada exitosamente')
             return True
 
+        except User.DoesNotExist:
+            messages.error(request, 'El usuario seleccionado no existe')
+            return False
         except Exception as e:
             messages.error(request, f'Error al crear requisición: {str(e)}')
             return False
@@ -59,7 +115,7 @@ class RequisicionService:
         req_id = request.POST.get('req_id')
         try:
             req = Requisicion.objects.get(id=req_id)
-            if req.creador_req != user.nombre:
+            if req.usuario != user:
                 messages.error(request, 'No tienes permiso para editar esta requisición')
                 return False
 
@@ -116,7 +172,7 @@ class RequisicionService:
         req_id = request.POST.get('req_id')
         try:
             req = Requisicion.objects.get(id=req_id)
-            if req.creador_req != user.nombre:
+            if req.usuario != user:
                 messages.error(request, 'No tienes permiso para eliminar esta requisición')
                 return False
 

@@ -1,0 +1,324 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Órdenes de Compra - Sistema de Compras</title>
+    <link rel="shortcut icon" href="{% static 'images/favicon.png' %}" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/paneles-style.css' %}">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <button class="btn btn-outline-light me-3" id="sidebarToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    <img src="{% static 'images/Agrogestion.png' %}" alt="Agrogestion" height="50" class="me-2">
+    <div class="ms-auto d-flex align-items-center">
+      <a href="{% url 'logout' %}" class="btn btn-outline-light">
+        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="d-flex" id="wrapper" style="min-height: 100vh;">
+  <!-- Sidebar -->
+  <div class="bg-dark text-white" id="sidebar-wrapper" style="width: 250px;">
+    <div class="p-3 text-center border-bottom">
+      <img src="{% static 'images/logo.png' %}" alt="Logo" width="80" class="mb-2">
+      <h5>{{ user.nombre }}</h5>
+    </div>
+    <div class="list-group list-group-flush">
+      {% if 'usuarios' in permisos %}
+      <a href="{% url 'panel_control' %}" class="list-group-item bg-dark text-white"><i class="fas fa-users me-2"></i>Usuarios</a>
+      {% endif %}
+      {% if 'compras' in permisos %}
+      <a href="{% url 'requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-invoice me-2"></i>Requisiciones</a>
+      {% endif %}
+      {% if 'ordenes_compra' in permisos %}
+      <a href="{% url 'ordenes_compra' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-purchase-order me-2"></i>Órdenes de Compra</a>
+      {% endif %}
+      {% if 'crear_requisiciones' in permisos %}
+      <a href="{% url 'crear_requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-plus-square me-2"></i>Crear Requisición</a>
+      {% endif %}
+      {% if 'aprobar_requisiciones' in permisos %}
+      <a href="{% url 'aprobar_requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-check-square me-2"></i>Aprobar Requisiciones</a>
+      <a href="{% url 'aprobar_compras' %}" class="list-group-item bg-dark text-white"><i class="fas fa-check-square me-2"></i>Aprobar Compras</a>
+      <a href="{% url 'panel_directivo' %}" class="list-group-item bg-dark text-white"><i class="fas fa-chart-line me-2"></i>Panel Estadístico</a>
+      {% endif %}
+      {% if 'panel_gerente' in permisos %}
+      <a href="{% url 'panel_gerente' %}" class="list-group-item bg-dark text-white"><i class="fas fa-user-tie me-2"></i>Panel Gerente</a>
+      {% endif %}
+      <a href="{% url 'logout' %}" class="list-group-item bg-dark text-white"><i class="fas fa-power-off me-2"></i>Cerrar Sesión</a>
+    </div>
+  </div>
+  <!-- Contenido principal -->
+  <div class="flex-grow-1 p-4">
+    <h2 class="mb-4"><i class="fas fa-file-invoice me-2"></i>Aprobar Órdenes de Compra</h2>
+
+    <!-- Tabla de órdenes de compra pendientes -->
+    <div class="card mb-4">
+      <div class="card-header bg-warning text-white">
+        Órdenes de Compra Pendientes
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Código Req.</th>
+                <th>Orden de Compra</th>
+                <th>Cuadro Comparativo</th>
+                <th>Presupuesto</th>
+                <th>Estado</th>
+                <th>Observaciones</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for orden in ordenes_pendientes %}
+              <tr>
+                <td>{{ orden.requisicion.codigo }}</td>
+                <td>
+                  {% if orden.archivo_orden %}
+                    <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ orden.archivo_orden.url }}">
+                      <i class="fas fa-file-pdf text-danger"></i>
+                    </a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if orden.archivo_cuadro_comparativo %}
+                    <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ orden.archivo_cuadro_comparativo.url }}">
+                      <i class="fas fa-file-pdf text-primary"></i>
+                    </a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if orden.archivo_presupuesto %}
+                    <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ orden.archivo_presupuesto.url }}">
+                      <i class="fas fa-file-pdf text-success"></i>
+                    </a>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge bg-warning text-dark">Pendiente</span>
+                </td>
+                <td>{{ orden.observaciones }}</td>
+                <td>
+                  <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="orden_id" value="{{ orden.id }}">
+                    <button type="submit" name="aprobar" class="btn btn-success btn-sm">
+                      <i class="fas fa-check"></i> Aprobar
+                    </button>
+                  </form>
+                  <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="orden_id" value="{{ orden.id }}">
+                    <button type="submit" name="rechazar" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Rechazar</button>
+                  </form>
+                  <button type="button" class="btn btn-info btn-sm" 
+                          data-bs-toggle="modal" 
+                          data-bs-target="#requisicionModal"
+                          onclick="verRequisicion('{{ orden.requisicion.codigo }}', 
+                                                  '{{ orden.requisicion.descripcion }}', 
+                                                  '{{ orden.requisicion.usuario_compras.nombre|default:"No asignado" }}', 
+                                                  '{{ orden.requisicion.usuario.nombre }}', 
+                                                  '{{ orden.requisicion.fecha_registro|date:"d/m/Y" }}', 
+                                                  '{{ orden.requisicion.fecha_requerida|date:"d/m/Y" }}', 
+                                                  '{{ orden.requisicion.get_estado_display }}', 
+                                                  '{{ orden.requisicion.importancia }}')">
+                    <i class="fas fa-eye"></i> Ver Requisición
+                  </button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center">No hay órdenes de compra pendientes.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de historial de órdenes de compra -->
+    <div class="card">
+      <div class="card-header bg-secondary text-white">
+        Historial de Órdenes de Compra
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Código Req.</th>
+                <th>Orden de Compra</th>
+                <th>Cuadro Comparativo</th>
+                <th>Presupuesto</th>
+                <th>Estado</th>
+                <th>Observaciones</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for orden in historial_ordenes %}
+              <tr>
+                <td>{{ orden.requisicion.codigo }}</td>
+                <td>
+                  {% if orden.archivo_orden %}
+                    <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ orden.archivo_orden.url }}">
+                      <i class="fas fa-file-pdf text-danger"></i>
+                    </a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if orden.archivo_cuadro_comparativo %}
+                    <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ orden.archivo_cuadro_comparativo.url }}">
+                      <i class="fas fa-file-pdf text-primary"></i>
+                    </a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if orden.archivo_presupuesto %}
+                    <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ orden.archivo_presupuesto.url }}">
+                      <i class="fas fa-file-pdf text-success"></i>
+                    </a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if orden.estado == 'A' %}
+                    <span class="badge bg-success">Aprobada</span>
+                  {% elif orden.estado == 'N' %}
+                    <span class="badge bg-danger">Rechazada</span>
+                  {% endif %}
+                </td>
+                <td>{{ orden.observaciones }}</td>
+                <td>{{ orden.fecha_aprobacion|date:"d/m/Y H:i" }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center">No hay órdenes de compra en el historial.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notificaciones tipo toast -->
+<div aria-live="polite" aria-atomic="true" class="position-fixed top-0 end-0 p-3" style="z-index: 3000;">
+  {% for message in messages %}
+  <div class="toast align-items-center text-bg-{{ message.tags|default:'info' }} border-0 show mb-2" role="alert" aria-live="assertive" aria-atomic="true" id="toast-message-{{ forloop.counter }}">
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="fas fa-info-circle me-2"></i> {{ message }}
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Modal para visualizar PDF -->
+<div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pdfModalLabel">Visualizar PDF</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" style="height:80vh;">
+        <iframe id="pdfFrame" src="" width="100%" height="100%" style="border:none;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal único de firma -->
+<div class="modal fade" id="firmarModal" tabindex="-1" aria-labelledby="firmarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="orden_id" id="modalOrdenId">
+        <div class="modal-header">
+          <h5 class="modal-title" id="firmarModalLabel">Firmar Orden de Compra</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-center">
+          <p>¿Deseas firmar esta orden de compra?</p>
+          {% if user.firma %}
+            <img src="{{ user.firma.url }}" alt="Firma" style="max-width:200px;max-height:100px;">
+          {% else %}
+            <p class="text-danger">No tienes firma registrada.</p>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" name="aprobar" class="btn btn-success" {% if not user.firma %}disabled{% endif %}>Firmar y Aprobar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para ver datos de la requisición -->
+<div class="modal fade" id="requisicionModal" tabindex="-1" aria-labelledby="requisicionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="requisicionModalLabel">Datos de la Requisición</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Código:</strong> <span id="reqCodigo"></span></p>
+        <p><strong>Descripción:</strong> <span id="reqDescripcion"></span></p>
+        <p><strong>Usuario Compras:</strong> <span id="reqUsuarioCompras"></span></p>
+        <p><strong>Requisitor:</strong> <span id="reqUsuario"></span></p>
+        <p><strong>Fecha de Registro:</strong> <span id="reqFechaRegistro"></span></p>
+        <p><strong>Fecha Requerida:</strong> <span id="reqFechaRequerida"></span></p>
+        <p><strong>Estado:</strong> <span id="reqEstado"></span></p>
+        <p><strong>Importancia:</strong> <span id="reqImportancia"></span></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Para enlaces con clase ver-pdf
+  document.querySelectorAll('.ver-pdf').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      var pdfUrl = link.getAttribute('data-pdf-url');
+      var pdfFrame = document.getElementById('pdfFrame');
+      pdfFrame.src = pdfUrl;
+    });
+  });
+});
+
+function verRequisicion(codigo, descripcion, usuarioCompras, requisitor, fechaRegistro, fechaRequerida, estado, importancia) {
+  document.getElementById('reqCodigo').innerText = codigo;
+  document.getElementById('reqDescripcion').innerText = descripcion;
+  document.getElementById('reqUsuarioCompras').innerText = usuarioCompras;
+  document.getElementById('reqUsuario').innerText = requisitor;
+  document.getElementById('reqFechaRegistro').innerText = fechaRegistro;
+  document.getElementById('reqFechaRequerida').innerText = fechaRequerida;
+  document.getElementById('reqEstado').innerText = estado;
+  document.getElementById('reqImportancia').innerText = importancia;
+}
+</script>
+</body>
+</html>

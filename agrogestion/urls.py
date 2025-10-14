@@ -9,6 +9,7 @@ urlpatterns = [
     path('requisitor/', include('requisitor.urls')),
     path('directivo/', include('directivo.urls')),
     path('gerente/', include('gerente.urls')),
+    path('contabilidad/', include('contabilidad.urls')),
 ]
 
 if settings.DEBUG:

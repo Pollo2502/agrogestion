@@ -39,7 +39,7 @@
       <a href="{% url 'requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-invoice me-2"></i>Requisiciones</a>
       {% endif %}
       {% if 'ordenes_compra' in permisos %}
-      <a href="{% url 'ordenes_compra' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-purchase-order me-2"></i>Órdenes de Compra</a>
+      <a href="{% url 'ordenes_compra' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-invoice me-2"></i>Órdenes de Compra</a>
       {% endif %}
       {% if 'crear_requisiciones' in permisos %}
       <a href="{% url 'crear_requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-plus-square me-2"></i>Crear Requisición</a>
@@ -73,7 +73,11 @@
             </div>
             <div class="modal-body">
               <div class="mb-3">
-                <label class="form-label">Nombre</label>
+                <label class="form-label">Nombre Completo</label>
+                <input type="text" name="nombre_completo" class="form-control" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Nombre de usuario</label>
                 <input type="text" name="nombre" class="form-control" required>
               </div>
               <div class="mb-3">
@@ -104,25 +108,40 @@
                     <label class="form-check-label" for="permiso_admin">Administrador</label>
                 </div>
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="permisos" value="puede_compras" id="permiso_compras">
-                    <label class="form-check-label" for="permiso_compras">Compras</label>
+                    <input class="form-check-input" type="checkbox" name="permisos" value="puede_contabilidad" id="permiso_contabilidad">
+                    <label class="form-check-label" for="permiso_contabilidad">Contabilidad</label>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="permisos" value="puede_requisiciones" id="permiso_requisiciones">
-                    <label class="form-check-label" for="permiso_requisiciones">Crear Requisiciones</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="permisos" value="puede_aprobar" id="permiso_aprobar">
-                    <label class="form-check-label" for="permiso_aprobar">Aprobar Requisiciones</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="permisos" value="es_gerente" id="permiso_gerente">
-                    <label class="form-check-label" for="permiso_gerente">Gerente (preaprueba requisiciones)</label>
-                </div>
+        <div class="form-check">
+          <input class="form-check-input permiso-toggle permiso-compras" type="checkbox" name="permisos" value="puede_compras" id="permiso_compras">
+          <label class="form-check-label" for="permiso_compras">Compras</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input permiso-toggle" type="checkbox" name="permisos" value="puede_requisiciones" id="permiso_requisiciones">
+          <label class="form-check-label" for="permiso_requisiciones">Crear Requisiciones</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input permiso-toggle" type="checkbox" name="permisos" value="puede_aprobar" id="permiso_aprobar">
+          <label class="form-check-label" for="permiso_aprobar">Aprobar Requisiciones</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input permiso-toggle" type="checkbox" name="permisos" value="es_gerente" id="permiso_gerente">
+          <label class="form-check-label" for="permiso_gerente">Gerente (preaprueba requisiciones)</label>
+        </div>
               </div>
               <div class="mb-3" id="firmaField" style="display:none;">
                 <label for="firma" class="form-label">Firma (PNG)</label>
                 <input class="form-control" type="file" name="firma" id="firma" accept="image/png">
+              </div>
+              <div class="mb-3" id="tipoCompradorField" style="display:none;">
+                <label class="form-label">Tipo de Comprador</label>
+                <select name="tipo_comprador" class="form-select">
+                  <option value="">Seleccione...</option>
+                  <option value="ferreteria">Ferretería</option>
+                  <option value="suministros">Suministros</option>
+                  <option value="medicina">Medicina</option>
+                  <option value="repuestos">Repuestos</option>
+                  <option value="insumos">Insumos</option>
+                </select>
               </div>
             </div>
             <div class="modal-footer">
@@ -171,11 +190,13 @@
             <thead class="table-dark">
                 <tr>
                     <th>ID</th>
-                    <th>Nombre</th>
+                    <th>Nombre de Usuario</th>
+                    <th>Nombre Completo</th>
                     <th>Email</th>
                     <th>Teléfono</th>
                     <th>Permisos</th>
                     <th>Firma</th>
+                    <th>Tipo de Comprador</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -184,6 +205,7 @@
                 <tr>
                     <td>{{ usuario.id }}</td>
                     <td>{{ usuario.nombre }}</td>
+                    <td>{{ usuario.nombre_completo }}</td>
                     <td>{{ usuario.email }}</td>
                     <td>{{ usuario.telefono }}</td>
                     <td>
@@ -191,6 +213,7 @@
                         {% if usuario.puede_compras %}<span class="badge bg-info text-dark">Compras</span> {% endif %}
                         {% if usuario.puede_requisiciones %}<span class="badge bg-success">Requisiciones</span> {% endif %}
                         {% if usuario.puede_aprobar %}<span class="badge bg-warning text-dark">Aprobar</span> {% endif %}
+                        {% if usuario.puede_contabilidad %}<span class="badge bg-dark">Contabilidad</span> {% endif %}
                         {% if usuario.es_gerente %}<span class="badge bg-secondary">Gerente</span> {% endif %}
                     </td>
                     <td>
@@ -199,6 +222,13 @@
                         {% else %}
                             <span class="text-muted">-</span>
                         {% endif %}
+                    </td>
+                    <td>
+                      {% if usuario.tipo_comprador %}
+                        {{ usuario.get_tipo_comprador_display }}
+                      {% else %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
                     </td>
                     <td>
                         <div class="btn-group" role="group">
@@ -236,6 +266,10 @@
                             <input type="text" class="form-control" id="nombre{{ usuario.id }}" name="nombre" value="{{ usuario.nombre }}" required>
                           </div>
                           <div class="mb-3">
+                            <label for="nombreCompleto{{ usuario.id }}" class="form-label">Nombre Completo</label>
+                            <input type="text" class="form-control" id="nombreCompleto{{ usuario.id }}" name="nombre_completo" value="{{ usuario.nombre_completo }}" required>
+                          </div>
+                          <div class="mb-3">
                             <label for="email{{ usuario.id }}" class="form-label">Email</label>
                             <input type="email" class="form-control" id="email{{ usuario.id }}" name="email" value="{{ usuario.email }}">
                           </div>
@@ -259,28 +293,43 @@
                               <label class="form-check-label" for="admin{{ usuario.id }}">Admin</label>
                             </div>
                             <div class="form-check form-check-inline">
-                              <input class="form-check-input" type="checkbox" name="permisos" value="puede_compras" id="compras{{ usuario.id }}" {% if usuario.puede_compras %}checked{% endif %}>
+                              <input class="form-check-input permiso-toggle permiso-compras" type="checkbox" name="permisos" value="puede_compras" id="compras{{ usuario.id }}" {% if usuario.puede_compras %}checked{% endif %}>
                               <label class="form-check-label" for="compras{{ usuario.id }}">Compras</label>
                             </div>
                             <div class="form-check form-check-inline">
-                              <input class="form-check-input" type="checkbox" name="permisos" value="puede_requisiciones" id="requisiciones{{ usuario.id }}" {% if usuario.puede_requisiciones %}checked{% endif %}>
+                              <input class="form-check-input permiso-toggle" type="checkbox" name="permisos" value="puede_requisiciones" id="requisiciones{{ usuario.id }}" {% if usuario.puede_requisiciones %}checked{% endif %}>
                               <label class="form-check-label" for="requisiciones{{ usuario.id }}">Requisiciones</label>
                             </div>
                             <div class="form-check form-check-inline">
-                              <input class="form-check-input permiso-aprobar" type="checkbox" name="permisos" value="puede_aprobar" id="aprobar{{ usuario.id }}" {% if usuario.puede_aprobar %}checked{% endif %}>
+                              <input class="form-check-input permiso-toggle" type="checkbox" name="permisos" value="puede_aprobar" id="aprobar{{ usuario.id }}" {% if usuario.puede_aprobar %}checked{% endif %}>
                               <label class="form-check-label" for="aprobar{{ usuario.id }}">Aprobar</label>
                             </div>
                             <div class="form-check form-check-inline">
-                              <input class="form-check-input" type="checkbox" name="permisos" value="es_gerente" id="gerente{{ usuario.id }}" {% if usuario.es_gerente %}checked{% endif %}>
+                              <input class="form-check-input" type="checkbox" name="permisos" value="puede_contabilidad" id="contabilidad{{ usuario.id }}" {% if usuario.puede_contabilidad %}checked{% endif %}>
+                              <label class="form-check-label" for="contabilidad{{ usuario.id }}">Contabilidad</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                              <input class="form-check-input permiso-toggle" type="checkbox" name="permisos" value="es_gerente" id="gerente{{ usuario.id }}" {% if usuario.es_gerente %}checked{% endif %}>
                               <label class="form-check-label" for="gerente{{ usuario.id }}">Gerente</label>
                             </div>
                           </div>
-                          <div class="mb-3 firma-field" id="firmaField{{ usuario.id }}" style="{% if not usuario.puede_aprobar %}display:none;{% endif %}">
+                          <div class="mb-3 firma-field" id="firmaField{{ usuario.id }}" style="{% if usuario.puede_aprobar or usuario.es_gerente or usuario.puede_requisiciones or usuario.puede_compras %}display:block;{% else %}display:none;{% endif %}">
                             <label for="firma{{ usuario.id }}" class="form-label">Firma (PNG)</label>
                             <input class="form-control" type="file" name="firma" id="firma{{ usuario.id }}" accept="image/png">
                             {% if usuario.firma %}
                               <img src="{{ usuario.firma.url }}" alt="Firma actual" width="80" class="mt-2">
                             {% endif %}
+                          </div>
+                          <div class="mb-3" id="tipoCompradorField{{ usuario.id }}" style="{% if not usuario.puede_compras %}display:none;{% endif %}">
+                            <label class="form-label">Tipo de Comprador</label>
+                            <select name="tipo_comprador" class="form-select">
+                              <option value="">Seleccione...</option>
+                              <option value="ferreteria" {% if usuario.tipo_comprador == 'ferreteria' %}selected{% endif %}>Ferretería</option>
+                              <option value="suministros" {% if usuario.tipo_comprador == 'suministros' %}selected{% endif %}>Suministros</option>
+                              <option value="medicina" {% if usuario.tipo_comprador == 'medicina' %}selected{% endif %}>Medicina</option>
+                              <option value="repuestos" {% if usuario.tipo_comprador == 'repuestos' %}selected{% endif %}>Repuestos</option>
+                              <option value="insumos" {% if usuario.tipo_comprador == 'insumos' %}selected{% endif %}>Insumos</option>
+                            </select>
                           </div>
                         </div>
                         <div class="modal-footer">
@@ -336,20 +385,49 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
-document.getElementById('permiso_aprobar').addEventListener('change', function() {
-    document.getElementById('firmaField').style.display = this.checked ? 'block' : 'none';
-});
-
-document.querySelectorAll('.permiso-aprobar').forEach(function(checkbox) {
-    checkbox.addEventListener('change', function() {
-        var id = this.id.replace('aprobar', '');
-        var firmaField = document.getElementById('firmaField' + id);
-        if (this.checked) {
-            firmaField.style.display = 'block';
-        } else {
-            firmaField.style.display = 'none';
-        }
+document.addEventListener('DOMContentLoaded', function() {
+  // Helper to decide if firma should be shown based on permisos
+  function hasFirmaPermission(container) {
+    var checkboxes = container.querySelectorAll('.permiso-toggle');
+    return Array.from(checkboxes).some(function(cb) {
+      return cb.checked && ['puede_aprobar', 'es_gerente', 'puede_requisiciones', 'puede_compras'].includes(cb.value);
     });
+  }
+
+  // Create modal handlers
+  var crearModal = document.getElementById('crearUsuarioModal');
+  if (crearModal) {
+    var crearFirmaField = document.getElementById('firmaField');
+    var crearTipoField = document.getElementById('tipoCompradorField');
+
+    function updateCrear() {
+      if (crearFirmaField) crearFirmaField.style.display = hasFirmaPermission(crearModal) ? 'block' : 'none';
+      var comprasCb = crearModal.querySelector('.permiso-compras');
+      if (crearTipoField) crearTipoField.style.display = (comprasCb && comprasCb.checked) ? 'block' : 'none';
+    }
+
+    crearModal.querySelectorAll('.permiso-toggle, .permiso-compras').forEach(function(cb){
+      cb.addEventListener('change', updateCrear);
+    });
+    updateCrear();
+  }
+
+  // Edit modals handlers
+  document.querySelectorAll('[id^="editarUsuarioModal"]').forEach(function(modal){
+    function updateEdit() {
+      var idSuffix = modal.id.replace('editarUsuarioModal','');
+      var firmaField = document.getElementById('firmaField' + idSuffix);
+      var tipoField = document.getElementById('tipoCompradorField' + idSuffix);
+      var showFirma = hasFirmaPermission(modal);
+      if (firmaField) firmaField.style.display = showFirma ? 'block' : 'none';
+      var comprasCb = modal.querySelector('.permiso-compras');
+      if (tipoField) tipoField.style.display = (comprasCb && comprasCb.checked) ? 'block' : 'none';
+    }
+    modal.querySelectorAll('.permiso-toggle, .permiso-compras').forEach(function(cb){
+      cb.addEventListener('change', updateEdit);
+    });
+    updateEdit();
+  });
 });
 </script>
 </body>

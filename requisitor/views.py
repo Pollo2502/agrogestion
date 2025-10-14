@@ -1,6 +1,4 @@
 from django.shortcuts import render
-
-# Create your views here.
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from usuarios.models import User
@@ -11,7 +9,6 @@ from .crud import RequisicionService
 def crear_requisiciones(request):
     user_id = request.session.get('user_id')
     if not user_id:
-        # Redirige a login o muestra error
         messages.error(request, 'Debe iniciar sesión primero')
         return redirect('login')
     try:
@@ -22,30 +19,57 @@ def crear_requisiciones(request):
 
     permisos = get_permisos(user)
 
-    compradores = User.objects.filter(puede_compras=True)
-    directivos = User.objects.filter(puede_aprobar=True)  # <-- agrega esto
+    # Verificar permiso de crear requisiciones
+    if not user.puede_requisiciones and not user.es_admin:
+        messages.error(request, 'No tienes permisos para crear requisiciones.')
+        return redirect('login')
 
-    # CRUD actions
+    compradores = User.objects.filter(puede_compras=True)
+    directivos = User.objects.filter(puede_aprobar=True)
+
     if request.method == 'POST':
         accion = request.POST.get('accion')
         if accion == 'crear':
             RequisicionService.crear_requisicion(request, user)
         elif accion == 'editar':
             RequisicionService.editar_requisicion(request, user)
-        # Puedes agregar aquí eliminar si lo necesitas
+        return redirect('crear_requisiciones')
 
-    requisiciones = Requisicion.objects.all()
+    # Filtrar requisiciones solo del usuario autenticado
+    requisiciones = Requisicion.objects.filter(usuario=user)
+
+    # Comentarios de rechazo asociados a las requisiciones del usuario
+    from compras.models import RequisicionComentario
+    comentarios_requisitor = RequisicionComentario.objects.filter(requisicion__usuario=user)
+    comentarios_unread_count = RequisicionComentario.objects.filter(requisicion__usuario=user, leido=False).count()
+
     return render(request, 'crear_requisiciones.html', {
         'permisos': permisos,
         'user': user,
         'requisiciones': requisiciones,
         'compradores': compradores,
-        'directivos': directivos,  # <-- pásalo al template
+        'directivos': directivos,
+        'comentarios_requisitor': comentarios_requisitor,
+        'comentarios_unread_count': comentarios_unread_count,
     })
 
 def logout(request):
     request.session.flush()
-    return redirect('index')
+    return redirect('login')
+
+
+def marcar_comentarios_leidos(request):
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('login')
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return redirect('login')
+
+    from compras.models import RequisicionComentario
+    RequisicionComentario.objects.filter(requisicion__usuario=user, leido=False).update(leido=True)
+    return redirect('crear_requisiciones')
 
 def get_permisos(user):
     permisos = []
@@ -59,12 +83,3 @@ def get_permisos(user):
     if user.puede_aprobar:
         permisos.append('aprobar_requisiciones')
     return permisos
-
-def tu_vista(request):
-    user_id = request.session.get('user_id')
-    if not user_id:
-        messages.error(request, 'Debe iniciar sesión primero')
-        return redirect('login')
-    usuario = user  # El usuario autenticado pasado desde la vista
-    ceco = usuario.ceco
-    gerente = User.objects.filter(ceco=ceco, es_gerente=True).first()

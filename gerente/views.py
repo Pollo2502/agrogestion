@@ -27,10 +27,15 @@ def panel_gerente(request):
             return redirect('panel_gerente')
 
     permisos = get_permisos(user)
+
+    # Historial de requisiciones (preaprobadas o rechazadas)
+    historial_requisiciones = Requisicion.objects.filter(gerente=user, estado_preaprobacion__in=['A', 'N'])
+
     return render(request, 'gerente.html', {
         'permisos': permisos,
         'user': user,
         'requisiciones': requisiciones,
+        'historial_requisiciones': historial_requisiciones,
     })
 
 def get_permisos(user):

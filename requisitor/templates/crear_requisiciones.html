@@ -9,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/paneles-style.css' %}">
+    <meta name="csrf-token" content="{{ csrf_token }}">
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -18,9 +19,16 @@
     </button>
     <img src="{% static 'images/Agrogestion.png' %}" alt="Agrogestion" height="50" class="me-2">
     <div class="ms-auto d-flex align-items-center">
-      <a href="{% url 'logout' %}" class="btn btn-outline-light">
-        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-      </a>
+            <!-- Notificación de comentarios de rechazo -->
+            <div class="me-2">
+                <button class="btn btn-outline-light position-relative" id="notifBtn" data-bs-toggle="modal" data-bs-target="#comentariosModal">
+                    <i class="fas fa-bell"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifCount" style="display:none">0</span>
+                </button>
+            </div>
+            <a href="{% url 'logout' %}" class="btn btn-outline-light">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+            </a>
     </div>
   </div>
 </nav>
@@ -38,9 +46,6 @@
       {% endif %}
       {% if 'compras' in permisos %}
       <a href="{% url 'requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-invoice me-2"></i>Requisiciones</a>
-      {% endif %}
-      {% if 'ordenes_compra' in permisos %}
-      <a href="{% url 'ordenes_compra' %}" class="list-group-item bg-dark text-white"><i class="fas fa-file-purchase-order me-2"></i>Órdenes de Compra</a>
       {% endif %}
       {% if 'crear_requisiciones' in permisos %}
       <a href="{% url 'crear_requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-plus-square me-2"></i>Crear Requisición</a>
@@ -89,8 +94,14 @@
                                 {% for req in requisiciones %}
                                 <tr>
                                     <td>{{ req.codigo }}</td>
+                                    <td>
+                                        {% if req.usuario_compras %}
+                                            {{ req.usuario_compras.nombre }}
+                                        {% else %}
+                                            <span class="text-muted">No asignado</span>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ req.usuario.nombre }}</td>
-                                    <td>{{ req.creador_req }}</td>
                                     <td>{{ req.descripcion|truncatechars:30 }}</td>
                                     <td>
                                         {% if req.archivo %}
@@ -235,10 +246,12 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Asignar a Comprador:</label>
-                            <select name="usuario_com_id" class="form-select" required>
+                            <select name="usuario_compras_id" class="form-select" required>
                                 <option value="">Seleccione un comprador</option>
                                 {% for comprador in compradores %}
-                                    <option value="{{ comprador.id }}">{{ comprador.nombre }}</option>
+                                    <option value="{{ comprador.id }}">
+                                        {{ comprador.nombre_completo|default:comprador.nombre }}{% if comprador.tipo_comprador %} ({{ comprador.get_tipo_comprador_display }}){% endif %}
+                                    </option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -261,20 +274,53 @@
         </div>
     </div>
 
-    <!-- Modal para visualizar PDF -->
-    <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="pdfModalLabel">Visualizar PDF</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-          </div>
-          <div class="modal-body" style="height:80vh;">
-            <iframe id="pdfFrame" src="" width="100%" height="100%" style="border:none;"></iframe>
-          </div>
-        </div>
+<!-- Modal para visualizar PDF -->
+<div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pdfModalLabel">Visualizar PDF de Requisición</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" style="height:80vh;">
+        <iframe id="pdfFrame" src="" width="100%" height="100%" style="border:none;"></iframe>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Modal de historial de comentarios -->
+<div class="modal fade" id="comentariosModal" tabindex="-1" aria-labelledby="comentariosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="comentariosModalLabel">Historial de Comentarios de Rechazo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="comentariosList">
+                    {% comment %} Will be populated server-side via context 'comentarios_requisitor' {% endcomment %}
+                    {% if comentarios_requisitor %}
+                        <ul class="list-group">
+                            {% for c in comentarios_requisitor %}
+                                            <li class="list-group-item">
+                                                <strong>{{ c.requisicion.codigo }}</strong> — <small class="text-muted">{{ c.fecha|date:"d/m/Y H:i" }}</small>
+                                                <p class="mb-0">{{ c.mensaje }}</p>
+                                                <small class="text-muted">Autor: {% if c.autor %}{{ c.autor.nombre }}{% else %}Sistema{% endif %}</small>
+                                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No tienes comentarios nuevos.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- Notificaciones tipo toast -->
 <div aria-live="polite" aria-atomic="true" class="position-fixed top-0 end-0 p-3" style="z-index: 3000;">
@@ -292,6 +338,69 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+    // Mostrar contador de notificaciones
+    document.addEventListener('DOMContentLoaded', function(){
+        // Evitar conflictos de comillas: inyectar como string y parsear
+        var count = parseInt('{{ comentarios_unread_count|default:"0" }}', 10) || 0;
+        var badge = document.getElementById('notifCount');
+        if (badge) {
+            if (count > 0) {
+                badge.style.display = 'inline-block';
+                badge.textContent = count;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Función para leer cookie CSRF (estándar Django)
+        function getCookie(name) {
+            var cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                var cookies = document.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Cuando se abre el modal de comentarios, llamar a la vista que marca como leídos
+        var comentariosModalEl = document.getElementById('comentariosModal');
+        if (comentariosModalEl) {
+            comentariosModalEl.addEventListener('shown.bs.modal', function(){
+                var csrftoken = getCookie('csrftoken');
+                fetch('{% url "marcar_comentarios_leidos" %}', { method: 'POST', headers: { 'X-CSRFToken': csrftoken } })
+                    .then(function(){
+                        var badge = document.getElementById('notifCount');
+                        if (badge) badge.style.display = 'none';
+                    }).catch(function(){ /* ignore */ });
+            });
+        }
+    });
+
+    // Para enlaces con clase ver-pdf: asignar src al iframe y dejar que Bootstrap abra el modal
+    document.querySelectorAll('.ver-pdf').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            var pdfUrl = link.getAttribute('data-pdf-url');
+            var pdfFrame = document.getElementById('pdfFrame');
+            if (pdfFrame) pdfFrame.src = pdfUrl;
+            // do not call preventDefault so Bootstrap's data-bs-toggle can open the modal
+        });
+    });
+
+    // Limpiar iframe cuando se cierra el modal para evitar que el PDF permanezca cargado
+    var pdfModalEl = document.getElementById('pdfModal');
+    if (pdfModalEl) {
+        pdfModalEl.addEventListener('hidden.bs.modal', function () {
+            var pdfFrame = document.getElementById('pdfFrame');
+            if (pdfFrame) pdfFrame.src = '';
+        });
+    }
+
 document.addEventListener('DOMContentLoaded', function() {
   // Sidebar toggle
   var sidebar = document.getElementById('sidebar-wrapper');
@@ -308,6 +417,30 @@ document.addEventListener('DOMContentLoaded', function() {
     var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
     toast.show();
   });
+    // Script para editar: usar modal único
+    var editarModal = document.getElementById('editarReqModal');
+    document.querySelectorAll('.btn-edit-req').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                    var reqId = btn.getAttribute('data-req-id');
+                    var codigo = btn.getAttribute('data-codigo');
+                    var fecha = btn.getAttribute('data-fecha');
+                    var descripcion = btn.getAttribute('data-descripcion');
+                    var importancia = btn.getAttribute('data-importancia');
+
+                    if (editarModal) {
+                            var idInput = editarModal.querySelector('input[name="req_id"]');
+                            if (idInput) idInput.value = reqId;
+                            var codigoInput = editarModal.querySelector('input[name="codigo"]');
+                            if (codigoInput) codigoInput.value = codigo;
+                            var fechaInput = editarModal.querySelector('input[name="fecha_requerida"]');
+                            if (fechaInput) fechaInput.value = fecha;
+                            var descTextarea = editarModal.querySelector('textarea[name="descripcion"]');
+                            if (descTextarea) descTextarea.value = descripcion;
+                            var sel = editarModal.querySelector('select[name="importancia"]');
+                            if (sel) sel.value = importancia || 'N';
+                    }
+            });
+    });
 });
     </script>
 </body>

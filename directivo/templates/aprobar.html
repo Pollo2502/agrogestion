@@ -46,6 +46,8 @@
       {% endif %}
       {% if 'aprobar_requisiciones' in permisos %}
       <a href="{% url 'aprobar_requisiciones' %}" class="list-group-item bg-dark text-white"><i class="fas fa-check-square me-2"></i>Aprobar Requisiciones</a>
+      <a href="{% url 'aprobar_compras' %}" class="list-group-item bg-dark text-white"><i class="fas fa-check-square me-2"></i>Aprobar Compras</a>
+      <a href="{% url 'panel_directivo' %}" class="list-group-item bg-dark text-white"><i class="fas fa-chart-line me-2"></i>Panel Estadístico</a>
       {% endif %}
       {% if 'panel_gerente' in permisos %}
       <a href="{% url 'panel_gerente' %}" class="list-group-item bg-dark text-white"><i class="fas fa-user-tie me-2"></i>Panel Gerente</a>
@@ -55,83 +57,176 @@
   </div>
   <!-- Contenido principal -->
   <div class="flex-grow-1 p-4">
-    <h2>Requisiciones Pendientes para Aprobación</h2>
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
+    <h2 class="mb-4"><i class="fas fa-file-invoice me-2"></i>Aprobar Requisiciones</h2>
 
-    <div class="card">
-        <div class="card-body">
-            {% if requisiciones %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Comprador</th>
-                            <th>Requisitor</th>
-                            <th>Descripción</th>
-                            <th>Archivo</th>
-                            <th>Fecha Registro</th>
-                            <th>Fecha Requerida</th>
-                            <th>Importancia</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for req in requisiciones %}
-                        <tr>
-                            <td>{{ req.codigo }}</td>
-                            <td>{{ req.usuario.nombre }}</td>
-                            <td>{{ req.creador_req }}</td>
-                            <td>{{ req.descripcion|truncatechars:30 }}</td>
-                            <td>
-                                {% if req.archivo %}
-                                    <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ req.archivo.url }}">
-                                        <i class="fas fa-file-pdf file-icon"></i>
-                                    </a>
-                                {% else %}
-                                    <span class="text-muted">Sin archivo</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ req.fecha_registro|date:"d/m/Y" }}</td>
-                            <td>{{ req.fecha_requerida|date:"d/m/Y" }}</td>
-                            <td>
-                                {% if req.importancia == 'U' %}
-                                    <span class="badge bg-danger">Urgente</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Normal</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <!-- Botón para abrir el modal de firmar -->
-                                <button type="button" class="btn btn-success btn-sm btn-firmar"
+    <!-- Tabla de requisiciones pendientes -->
+    <div class="card mb-4">
+      <div class="card-header bg-warning text-white">
+        Requisiciones Pendientes
+      </div>
+      <div class="card-body">
+        {% if requisiciones_pendientes %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Usuario Compras</th>
+                        <th>Requisitor</th>
+                        <th>Descripción</th>
+                        <th>Archivo</th>
+                        <th>Fecha Registro</th>
+                        <th>Fecha Requerida</th>
+                        <th>Estado</th>
+                        <th>Importancia</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requisiciones_pendientes %}
+                    <tr>
+                        <td>{{ req.codigo }}</td>
+                        <td>
+                            {% if req.usuario_compras %}
+                                {{ req.usuario_compras.nombre }}
+                            {% else %}
+                                <span class="text-muted">No asignado</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ req.usuario.nombre }}</td>
+                        <td>{{ req.descripcion|truncatechars:30 }}</td>
+                        <td>
+                            {% if req.archivo %}
+                                <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ req.archivo.url }}">
+                                    <i class="fas fa-file-pdf file-icon"></i>
+                                </a>
+                            {% else %}
+                                <span class="text-muted">Sin archivo</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ req.fecha_registro|date:"d/m/Y" }}</td>
+                        <td>{{ req.fecha_requerida|date:"d/m/Y" }}</td>
+                        <td>
+                            <span class="badge bg-warning">Pendiente</span>
+                        </td>
+                        <td>
+                            {% if req.importancia == 'U' %}
+                                <span class="badge bg-danger">Urgente</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Normal</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-success btn-sm btn-firmar"
                                     data-bs-toggle="modal"
                                     data-bs-target="#firmarModal"
                                     data-req-id="{{ req.id }}">
-                                    Firmar
-                                </button>
-                                <!-- Botón para rechazar (mantén el formulario solo para rechazar) -->
-                                <form method="post" enctype="multipart/form-data" style="display:inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="req_id" value="{{ req.id }}">
-                                    <button type="submit" name="rechazar" class="btn btn-danger btn-sm">Rechazar</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-4">
-                <i class="fas fa-inbox fs-1 text-muted mb-3"></i>
-                <p class="text-muted">No tienes requisiciones pendientes de aprobación</p>
-            </div>
-            {% endif %}
+                                Firmar
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm btn-rechazar"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#rechazarModal"
+                                    data-req-id="{{ req.id }}">
+                                Rechazar
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% else %}
+        <div class="text-center py-4">
+            <i class="fas fa-inbox fs-1 text-muted mb-3"></i>
+            <p class="text-muted">No tienes requisiciones pendientes</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Tabla de historial de requisiciones -->
+    <div class="card">
+      <div class="card-header bg-secondary text-white">
+        Historial de Requisiciones
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Usuario Compras</th>
+                <th>Requisitor</th>
+                <th>Descripción</th>
+                <th>Archivo</th>
+                <th>Aprobación</th>
+                <th>Fecha Registro</th>
+                <th>Fecha Requerida</th>
+                <th>Estado</th>
+                <th>Importancia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for req in historial_requisiciones %}
+              <tr>
+                <td>{{ req.codigo }}</td>
+                <td>
+                  {% if req.usuario_compras %}
+                    {{ req.usuario_compras.nombre }}
+                  {% else %}
+                    <span class="text-muted">No asignado</span>
+                  {% endif %}
+                </td>
+                <td>{{ req.usuario.nombre }}</td>
+                <td>{{ req.descripcion|truncatechars:30 }}</td>
+                <td>
+                  {% if req.archivo %}
+                    <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ req.archivo.url }}">
+                      <i class="fas fa-file-pdf file-icon"></i>
+                    </a>
+                  {% else %}
+                    <span class="text-muted">Sin archivo</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if req.archivo_aprobacion %}
+                    <a href="#" class="ver-pdf" data-bs-toggle="modal" data-bs-target="#pdfModal" data-pdf-url="{{ req.archivo_aprobacion.url }}">
+                      <i class="fas fa-file-pdf file-icon"></i>
+                    </a>
+                  {% else %}
+                    <span class="text-muted">Sin aprobación</span>
+                  {% endif %}
+                </td>
+                <td>{{ req.fecha_registro|date:"d/m/Y" }}</td>
+                <td>{{ req.fecha_requerida|date:"d/m/Y" }}</td>
+                <td>
+                  <span class="badge 
+                    {% if req.estado == 'P' %}bg-warning
+                    {% elif req.estado == 'A' %}bg-success
+                    {% else %}bg-danger{% endif %}">
+                    {{ req.get_estado_display }}
+                  </span>
+                </td>
+                <td>
+                  {% if req.importancia == 'U' %}
+                    <span class="badge bg-danger">Urgente</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Normal</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="10" class="text-center">
+                  <i class="fas fa-inbox fs-1 text-muted mb-3"></i>
+                  <p class="text-muted">No hay requisiciones en el historial</p>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div> <!-- cierra flex-grow-1 p-4 -->
 </div> <!-- cierra d-flex -->
@@ -153,26 +248,55 @@
 
 <!-- Modal único de firma -->
 <div class="modal fade" id="firmarModal" tabindex="-1" aria-labelledby="firmarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="req_id" id="modalReqId">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="firmarModalLabel">Firmar Requisición</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p>¿Deseas firmar esta requisición?</p>
+                    {% if user.firma %}
+                        <img src="{{ user.firma.url }}" alt="Firma" style="max-width:200px;max-height:100px;">
+                    {% else %}
+                        <p class="text-danger">No tienes firma registrada.</p>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="firmar" class="btn btn-success" {% if not user.firma %}disabled{% endif %}>
+                        Firmar y Aprobar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal único de rechazo -->
+<div class="modal fade" id="rechazarModal" tabindex="-1" aria-labelledby="rechazarModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <input type="hidden" name="req_id" id="modalReqId">
+        <input type="hidden" name="req_id" id="modalReqIdRechazo">
         <div class="modal-header">
-          <h5 class="modal-title" id="firmarModalLabel">Firmar Requisición</h5>
+          <h5 class="modal-title" id="rechazarModalLabel">Rechazar Requisición</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
-        <div class="modal-body text-center">
-          <p>¿Deseas firmar esta requisición?</p>
-          {% if user.firma %}
-            <img src="{{ user.firma.url }}" alt="Firma" style="max-width:200px;max-height:100px;">
-          {% else %}
-            <p class="text-danger">No tienes firma registrada.</p>
-          {% endif %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="comentario_rechazo" class="form-label">Comentario de rechazo (se notificará al requsitor)</label>
+            <textarea name="comentario_rechazo" id="comentario_rechazo" class="form-control" rows="4" placeholder="Explique el motivo del rechazo..."></textarea>
+          </div>
+          <p class="text-danger">Nota: El rechazo de una requisición no se puede deshacer.</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" name="firmar" class="btn btn-success" {% if not user.firma %}disabled{% endif %}>Firmar y Aprobar</button>
+          <button type="submit" name="rechazar" class="btn btn-danger">Rechazar Requisición</button>
         </div>
       </form>
     </div>
@@ -206,9 +330,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   // Para enlaces con clase ver-pdf
   document.querySelectorAll('.ver-pdf').forEach(function(link) {
-      link.addEventListener('click', function(e) {
-          e.preventDefault();
-      });
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      var pdfUrl = link.getAttribute('data-pdf-url');
+      var pdfFrame = document.getElementById('pdfFrame');
+      pdfFrame.src = pdfUrl;
+    });
   });
 
   var toastElList = [].slice.call(document.querySelectorAll('.toast'));
@@ -222,6 +349,12 @@ document.addEventListener('DOMContentLoaded', function() {
       btn.addEventListener('click', function() {
           document.getElementById('modalReqId').value = btn.getAttribute('data-req-id');
       });
+  });
+  // Script para pasar el id de la requisición al modal de rechazo
+  document.querySelectorAll('.btn-rechazar').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.getElementById('modalReqIdRechazo').value = btn.getAttribute('data-req-id');
+    });
   });
 });
 </script>
