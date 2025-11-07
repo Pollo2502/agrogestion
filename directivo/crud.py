@@ -9,6 +9,7 @@ from reportlab.lib.units import cm
 from io import BytesIO
 from django.conf import settings
 from django.utils import timezone
+from django.core.mail import send_mail
 
 class AprobacionService:
     @staticmethod
@@ -30,6 +31,59 @@ class AprobacionService:
                 return False
             req.estado = 'A'
             req.save()
+
+            # Enviar notificación por correo al creador de la requisición
+            if req.usuario.email:
+                subject = f"Requisición {req.codigo} aprobada"
+                message = f"""
+                Estimado {req.usuario.nombre},
+
+                Su requisición con los siguientes detalles ha sido aprobada:
+
+                Código: {req.codigo}
+                Descripción: {req.descripcion}
+                Fecha Requerida: {req.fecha_requerida.strftime('%d/%m/%Y')}
+                Importancia: {req.importancia}
+
+                Por favor, revise el estado de su requisición en el sistema.
+
+                Saludos,
+                Equipo de Agrogestión
+                """
+                send_mail(
+                    subject,
+                    message,
+                    'agroluchasistema@gmail.com',
+                    [req.usuario.email],
+                    fail_silently=False,
+                )
+
+            # Enviar notificación por correo al usuario de compras
+            if req.usuario_compras and req.usuario_compras.email:
+                subject = f"Requisición {req.codigo} aprobada y lista para procesar"
+                message = f"""
+                Estimado {req.usuario_compras.nombre},
+
+                La requisición con los siguientes detalles ha sido aprobada y está lista para ser procesada:
+
+                Código: {req.codigo}
+                Descripción: {req.descripcion}
+                Fecha Requerida: {req.fecha_requerida.strftime('%d/%m/%Y')}
+                Importancia: {req.importancia}
+
+                Por favor, revise la requisición en el sistema.
+
+                Saludos,
+                Equipo de Agrogestión
+                """
+                send_mail(
+                    subject,
+                    message,
+                    'agroluchasistema@gmail.com',
+                    [req.usuario_compras.email],
+                    fail_silently=False,
+                )
+
             messages.success(request, f'Requisición {req.codigo} aprobada exitosamente.')
             return True
         except Requisicion.DoesNotExist:
@@ -64,6 +118,35 @@ class AprobacionService:
                 )
             req.estado = 'N'
             req.save()
+
+            # Enviar notificación por correo al creador de la requisición
+            if req.usuario.email:
+                subject = f"Requisición {req.codigo} rechazada"
+                message = f"""
+                Estimado {req.usuario.nombre},
+
+                Su requisición con los siguientes detalles ha sido rechazada:
+
+                Código: {req.codigo}
+                Descripción: {req.descripcion}
+                Fecha Requerida: {req.fecha_requerida.strftime('%d/%m/%Y')}
+                Importancia: {req.importancia}
+
+                Comentario del directivo: {comentario_text if comentario_text else 'No se proporcionó un comentario.'}
+
+                Por favor, revise el estado de su requisición en el sistema.
+
+                Saludos,
+                Equipo de Agrogestión
+                """
+                send_mail(
+                    subject,
+                    message,
+                    'agroluchasistema@gmail.com',
+                    [req.usuario.email],
+                    fail_silently=False,
+                )
+
             messages.success(request, f'Requisición {req.codigo} rechazada.')
             return True
         except Requisicion.DoesNotExist:
@@ -231,6 +314,7 @@ class AprobacionService:
     @transaction.atomic
     def rechazar_orden_compra(request, user):
         orden_id = request.POST.get('orden_id')
+        comentario_rechazo = request.POST.get('comentario_rechazo', '').strip()
         if not orden_id:
             messages.error(request, 'ID de orden inválido.')
             return False
@@ -242,7 +326,43 @@ class AprobacionService:
         try:
             orden = OrdenCompra.objects.get(id=orden_id_int)
             orden.estado = 'N'  # Cambiar estado a Rechazada
+            orden.observaciones = comentario_rechazo  # Guardar el comentario de rechazo
             orden.save()
+
+            # Guardar el comentario en el modelo OrdenCompraComentario
+            from compras.models import OrdenCompraComentario
+            OrdenCompraComentario.objects.create(
+                orden_compra=orden,
+                autor=user,
+                mensaje=comentario_rechazo
+            )
+
+            # Enviar notificación por correo al usuario de compras
+            if orden.requisicion.usuario_compras and orden.requisicion.usuario_compras.email:
+                subject = f"Orden de Compra {orden.id} rechazada"
+                message = f"""
+                Estimado {orden.requisicion.usuario_compras.nombre},
+
+                La orden de compra asociada a la requisición con los siguientes detalles ha sido rechazada:
+
+                Código de Requisición: {orden.requisicion.codigo}
+                Descripción: {orden.requisicion.descripcion}
+                Fecha de Requerimiento: {orden.requisicion.fecha_requerida.strftime('%d/%m/%Y')}
+                Comentario del Directivo: {comentario_rechazo if comentario_rechazo else 'No se proporcionó un comentario.'}
+
+                Por favor, revise el estado de la orden en el sistema.
+
+                Saludos,
+                Equipo de Agrogestión
+                """
+                send_mail(
+                    subject,
+                    message,
+                    'agroluchasistema@gmail.com',
+                    [orden.requisicion.usuario_compras.email],
+                    fail_silently=False,
+                )
+
             messages.success(request, f'Orden de compra para la requisición {orden.requisicion.codigo} rechazada.')
             return True
         except OrdenCompra.DoesNotExist:

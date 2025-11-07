@@ -78,3 +78,17 @@ class OrdenCompra(models.Model):
 
     def __str__(self):
         return f"Orden de Compra para {self.requisicion.codigo}"
+
+
+class OrdenCompraComentario(models.Model):
+    orden_compra = models.ForeignKey('OrdenCompra', on_delete=models.CASCADE, related_name='comentarios')
+    autor = models.ForeignKey('usuarios.User', on_delete=models.SET_NULL, null=True, blank=True)
+    mensaje = models.TextField()
+    fecha = models.DateTimeField(auto_now_add=True)
+    leido = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"Comentario #{self.id} - {self.orden_compra.requisicion.codigo if self.orden_compra else 'sin-orden'}"

@@ -80,7 +80,11 @@
                 <td>{{ sol.orden.requisicion.codigo }}</td>
                 <td>{{ sol.fecha_envio|date:"d/m/Y H:i" }}</td>
                 <td>{{ sol.get_estado_display }}</td>
-                <td><pre style="white-space:pre-wrap;">{{ sol.tracking_text }}</pre></td>
+                <td>
+                  <button class="btn btn-sm btn-outline-info btn-view-tracking mt-2" data-bs-toggle="modal" data-bs-target="#trackingModal" data-tracking="{{ sol.tracking_text }}">
+                    Ver Tracking
+                  </button>
+                </td>
                 <td>
                   {% if sol.archivo_zip %}
                     <a href="#" class="btn btn-sm btn-outline-primary" onclick="event.preventDefault(); document.getElementById('download-form-{{ sol.id }}').submit();">Descargar</a>
@@ -127,36 +131,20 @@
   {% endfor %}
 </div>
 
-<!-- Modal para cargar/modificar documento de soporte -->
-<div class="modal fade" id="cargarSoporteModal" tabindex="-1" aria-labelledby="cargarSoporteModalLabel" aria-hidden="true">
+<!-- Modal para ver el tracking -->
+<div class="modal fade" id="trackingModal" tabindex="-1" aria-labelledby="trackingModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="post" enctype="multipart/form-data" action="{% url 'cargar_soporte' %}">
-        {% csrf_token %}
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="cargarSoporteModalLabel">Cargar Documento de Soporte</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" name="orden_id" id="modalOrdenId">
-          <div class="mb-3">
-            <label class="form-label">Archivo soporte (PDF)</label>
-            <input type="file" name="archivo_soporte" id="modalArchivoSoporte" class="form-control" accept="application/pdf" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Tipo de soporte</label>
-            <select name="tipo_soporte" id="modalTipoSoporte" class="form-select">
-              <option value="">Seleccione</option>
-              <option value="nota">Nota de recepción</option>
-              <option value="factura">Factura</option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Guardar Soporte</button>
-        </div>
-      </form>
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="trackingModalLabel">Tracking de la Solicitud</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="trackingContent" style="white-space: pre-wrap; font-family: monospace; font-size: 0.9rem; background-color: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #dee2e6;"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -164,29 +152,12 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Sidebar toggle
-  var sidebar = document.getElementById('sidebar-wrapper');
-  var toggleBtn = document.getElementById('sidebarToggle');
-  if (toggleBtn && sidebar) {
-    toggleBtn.addEventListener('click', function() {
-      sidebar.classList.toggle('collapsed');
-      sidebar.classList.toggle('show');
-    });
-  }
-  // Toasts
-  var toastElList = [].slice.call(document.querySelectorAll('.toast'));
-  toastElList.forEach(function(toastEl) {
-    var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
-    toast.show();
-  });
-  // rellenar modal con datos del botón
-  document.querySelectorAll('.btn-cargar-soporte').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var ordenId = btn.getAttribute('data-orden-id');
-      var tipo = btn.getAttribute('data-tipo') || '';
-      document.getElementById('modalOrdenId').value = ordenId;
-      document.getElementById('modalTipoSoporte').value = tipo;
-      document.getElementById('modalArchivoSoporte').value = ''; // limpiar input
+  // Handle tracking modal
+  document.querySelectorAll('.btn-view-tracking').forEach(function(button) {
+    button.addEventListener('click', function() {
+      const trackingText = this.getAttribute('data-tracking');
+      const decodedText = trackingText.replace(/\\u000A/g, '\n').replace(/\\u002D/g, '-').replace(/\\u003D/g, '=');
+      document.getElementById('trackingContent').textContent = decodedText; // Render decoded text
     });
   });
 });

@@ -118,7 +118,9 @@
                   <form method="post" style="display:inline;">
                     {% csrf_token %}
                     <input type="hidden" name="orden_id" value="{{ orden.id }}">
-                    <button type="submit" name="rechazar" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Rechazar</button>
+                    <button type="button" class="btn btn-danger btn-sm btn-rechazar" data-bs-toggle="modal" data-bs-target="#rechazarOrdenModal" data-orden-id="{{ orden.id }}">
+                      <i class="fas fa-times"></i> Rechazar
+                    </button>
                   </form>
                   <button type="button" class="btn btn-info btn-sm" 
                           data-bs-toggle="modal" 
@@ -295,6 +297,64 @@
   </div>
 </div>
 
+<!-- Modal único de rechazo para órdenes de compra -->
+<div class="modal fade" id="rechazarOrdenModal" tabindex="-1" aria-labelledby="rechazarOrdenModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="orden_id" id="modalOrdenIdRechazo">
+        <div class="modal-header">
+          <h5 class="modal-title" id="rechazarOrdenModalLabel">Rechazar Orden de Compra</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="comentario_rechazo" class="form-label">Comentario de rechazo</label>
+            <textarea name="comentario_rechazo" id="comentario_rechazo" class="form-control" rows="4" placeholder="Explique el motivo del rechazo..." required></textarea>
+          </div>
+          <p class="text-danger">Nota: El rechazo de una orden de compra no se puede deshacer.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" name="rechazar" class="btn btn-danger">Rechazar Orden</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de historial de comentarios -->
+<div class="modal fade" id="comentariosModal" tabindex="-1" aria-labelledby="comentariosModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="comentariosModalLabel">Historial de Comentarios de Rechazo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        {% if comentarios_ordenes %}
+          <ul class="list-group">
+            {% for comentario in comentarios_ordenes %}
+              <li class="list-group-item">
+                <strong>{{ comentario.orden_compra.requisicion.codigo }}</strong> — 
+                <small class="text-muted">{{ comentario.fecha|date:"d/m/Y H:i" }}</small>
+                <p class="mb-0">{{ comentario.mensaje }}</p>
+                <small class="text-muted">Autor: {% if comentario.autor %}{{ comentario.autor.nombre }}{% else %}Sistema{% endif %}</small>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">No tienes comentarios de rechazo.</p>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -305,6 +365,14 @@ document.addEventListener('DOMContentLoaded', function() {
       var pdfUrl = link.getAttribute('data-pdf-url');
       var pdfFrame = document.getElementById('pdfFrame');
       pdfFrame.src = pdfUrl;
+    });
+  });
+
+  // Pasar el ID de la orden al modal de rechazo
+  document.querySelectorAll('.btn-rechazar').forEach(function(button) {
+    button.addEventListener('click', function() {
+      const ordenId = button.getAttribute('data-orden-id');
+      document.getElementById('modalOrdenIdRechazo').value = ordenId;
     });
   });
 });

@@ -4,6 +4,7 @@ from django.contrib import messages
 from usuarios.models import User
 from compras.models import Requisicion
 from .crud import RequisicionService
+from telegram_utils import send_telegram_message
 
 
 def crear_requisiciones(request):
@@ -30,9 +31,17 @@ def crear_requisiciones(request):
     if request.method == 'POST':
         accion = request.POST.get('accion')
         if accion == 'crear':
-            RequisicionService.crear_requisicion(request, user)
+            success = RequisicionService.crear_requisicion(request, user)
+            if success:
+                messages.success(request, 'Requisición creada exitosamente.')
+                # Send a Telegram notification
+                requisicion_codigo = request.POST.get('codigo', '').strip()
+                message = f"Se ha registrado una nueva requisición con código {requisicion_codigo} por el usuario {user.nombre}."
+                send_telegram_message(message)
         elif accion == 'editar':
-            RequisicionService.editar_requisicion(request, user)
+            success = RequisicionService.editar_requisicion(request, user)
+            if success:
+                messages.success(request, 'Requisición editada exitosamente.')
         return redirect('crear_requisiciones')
 
     # Filtrar requisiciones solo del usuario autenticado

@@ -1,17 +1,19 @@
-import telegram
-import asyncio
+import requests
 
-async def send_telegram_message(chat_id, message):
-    bot = telegram.Bot(token='8149347717:AAEJE7gewB0KjCsybxYZjubqyaKspZ9TLtM')
-    await bot.send_message(chat_id=chat_id, text=message)
+BOT_TOKEN = '8508713559:AAGuigERCjG7ppMbmheV-RXYcdTmD-NWykE'
+CHAT_ID = '-5039857643'
 
-if __name__ == "__main__":
-    # Prueba de envío de mensaje al canal
+def send_telegram_message(message):
+    """
+    Sends a message to the specified Telegram chat using the bot token.
+    """
+    url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
+    payload = {
+        'chat_id': CHAT_ID,
+        'text': message
+    }
     try:
-        asyncio.run(send_telegram_message(
-            chat_id='@agrolucha',
-            message='Prueba de integración: mensaje enviado desde telegram_utils.py'
-        ))
-        print("Mensaje enviado correctamente.")
-    except Exception as e:
-        print(f"Error al enviar el mensaje: {e}")
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending message: {e}")

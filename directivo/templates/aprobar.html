@@ -17,6 +17,13 @@
     </button>
     <img src="{% static 'images/Agrogestion.png' %}" alt="Agrogestion" height="50" class="me-2">
     <div class="ms-auto d-flex align-items-center">
+      <!-- Notificación de comentarios de rechazo -->
+      <div class="me-2">
+        <button class="btn btn-outline-light position-relative" id="notifBtn" data-bs-toggle="modal" data-bs-target="#comentariosModal">
+          <i class="fas fa-bell"></i>
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifCount" style="display:none">0</span>
+        </button>
+      </div>
       <a href="{% url 'logout' %}" class="btn btn-outline-light">
         <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
       </a>
@@ -276,11 +283,11 @@
     </div>
 </div>
 
-<!-- Modal único de rechazo -->
+<!-- Modal único de rechazo para requisiciones -->
 <div class="modal fade" id="rechazarModal" tabindex="-1" aria-labelledby="rechazarModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form method="post" enctype="multipart/form-data">
+      <form method="post">
         {% csrf_token %}
         <input type="hidden" name="req_id" id="modalReqIdRechazo">
         <div class="modal-header">
@@ -289,8 +296,8 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label for="comentario_rechazo" class="form-label">Comentario de rechazo (se notificará al requsitor)</label>
-            <textarea name="comentario_rechazo" id="comentario_rechazo" class="form-control" rows="4" placeholder="Explique el motivo del rechazo..."></textarea>
+            <label for="comentario_rechazo" class="form-label">Comentario de rechazo</label>
+            <textarea name="comentario_rechazo" id="comentario_rechazo" class="form-control" rows="4" placeholder="Explique el motivo del rechazo..." required></textarea>
           </div>
           <p class="text-danger">Nota: El rechazo de una requisición no se puede deshacer.</p>
         </div>
@@ -299,6 +306,38 @@
           <button type="submit" name="rechazar" class="btn btn-danger">Rechazar Requisición</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de historial de comentarios -->
+<div class="modal fade" id="comentariosModal" tabindex="-1" aria-labelledby="comentariosModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="comentariosModalLabel">Historial de Comentarios de Rechazo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="comentariosList">
+          {% if comentarios_requisiciones %}
+            <ul class="list-group">
+              {% for comentario in comentarios_requisiciones %}
+                <li class="list-group-item">
+                  <strong>{{ comentario.requisicion.codigo }}</strong> — <small class="text-muted">{{ comentario.fecha|date:"d/m/Y H:i" }}</small>
+                  <p class="mb-0">{{ comentario.mensaje }}</p>
+                  <small class="text-muted">Autor: {% if comentario.autor %}{{ comentario.autor.nombre }}{% else %}Sistema{% endif %}</small>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-muted">No tienes comentarios nuevos.</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -356,6 +395,32 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('modalReqIdRechazo').value = btn.getAttribute('data-req-id');
     });
   });
+
+  // Mostrar contador de notificaciones
+  var count = parseInt('{{ comentarios_unread_count|default:"0" }}', 10) || 0;
+  var badge = document.getElementById('notifCount');
+  if (badge) {
+    if (count > 0) {
+      badge.style.display = 'inline-block';
+      badge.textContent = count;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // Marcar comentarios como leídos al abrir el modal
+  var comentariosModalEl = document.getElementById('comentariosModal');
+  if (comentariosModalEl) {
+    comentariosModalEl.addEventListener('shown.bs.modal', function() {
+      var csrftoken = '{{ csrf_token }}';
+      fetch('{% url "marcar_comentarios_leidos" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken }
+      }).then(function() {
+        if (badge) badge.style.display = 'none';
+      }).catch(function() { /* ignore */ });
+    });
+  }
 });
 </script>
 </body>

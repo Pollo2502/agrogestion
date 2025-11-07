@@ -193,6 +193,49 @@
         </div>
       </div>
     </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <form method="get" action="{% url 'panel_directivo' %}">
+          <div class="input-group">
+            <input type="text" name="search" class="form-control" placeholder="Buscar código de requisición" value="{{ search_query }}">
+            <button class="btn btn-primary" type="submit">Buscar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal for displaying tracking result -->
+    <div class="modal fade" id="trackingModal" tabindex="-1" aria-labelledby="trackingModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title" id="trackingModalLabel">Resultado de la Búsqueda</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <pre id="trackingContent" style="white-space: pre-wrap; font-family: monospace; font-size: 0.9rem; background-color: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #dee2e6;"></pre>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if tracking_result %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if tracking result exists and display it in the modal
+      const trackingResult = `{{ tracking_result|escapejs }}`; // Escape special characters for safe injection
+      if (trackingResult) {
+        const trackingModal = new bootstrap.Modal(document.getElementById('trackingModal'));
+        document.getElementById('trackingContent').textContent = trackingResult;
+        trackingModal.show();
+      }
+    });
+    </script>
+    {% endif %}
   </div>
 </div>
 
@@ -205,37 +248,58 @@ document.getElementById('sidebarToggle')?.addEventListener('click', function(){
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Datos inyectados por la vista (JSON literal seguro)
-const importanceLabels = {{ importance_labels_json|default:"[]"|safe }};
-const importanceData = {{ importance_data_json|default:"[]"|safe }};
-const preLabels = {{ pre_labels_json|default:"[]"|safe }};
-const preData = {{ pre_data_json|default:"[]"|safe }};
+// Debugging: Log data passed to the charts
+console.log('Importance Labels:', {{ importance_labels_json|safe }});
+console.log('Importance Data:', {{ importance_data_json|safe }});
+console.log('Pre-Approval Labels:', {{ pre_labels_json|safe }});
+console.log('Pre-Approval Data:', {{ pre_data_json|safe }});
 
-function createPieChart(ctxId, labels, data, colors) {
-  const ctx = document.getElementById(ctxId).getContext('2d');
-  return new Chart(ctx, {
-    type: 'pie',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: data,
-        backgroundColor: colors,
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false
+// Ensure the data is valid before initializing the charts
+try {
+  const importanceLabels = {{ importance_labels_json|safe }};
+  const importanceData = {{ importance_data_json|safe }};
+  const preLabels = {{ pre_labels_json|safe }};
+  const preData = {{ pre_data_json|safe }};
+
+  // Check if the data is empty or malformed
+  if (!Array.isArray(importanceLabels) || !Array.isArray(importanceData)) {
+    console.error('Importance data is invalid:', importanceLabels, importanceData);
+  }
+  if (!Array.isArray(preLabels) || !Array.isArray(preData)) {
+    console.error('Pre-Approval data is invalid:', preLabels, preData);
+  }
+
+  // Initialize Pie Charts
+  function createPieChart(ctxId, labels, data, colors) {
+    const ctx = document.getElementById(ctxId)?.getContext('2d');
+    if (!ctx) {
+      console.error(`Canvas with ID "${ctxId}" not found.`);
+      return;
     }
-  });
-}
+    return new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: colors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+  }
 
-// Colores básicos
-const colors1 = ['#4e73df', '#e74a3b', '#f6c23e'];
-const colors2 = ['#1cc88a', '#36b9cc', '#f6c23e'];
+  // Colors for the charts
+  const colors1 = ['#4e73df', '#e74a3b', '#f6c23e'];
+  const colors2 = ['#1cc88a', '#36b9cc', '#f6c23e'];
 
-createPieChart('chartImportance', importanceLabels, importanceData, colors1);
-createPieChart('chartPreaprob', preLabels, preData, colors2);
+  // Render Pie Charts
+  createPieChart('chartImportance', importanceLabels, importanceData, colors1);
+  createPieChart('chartPreaprob', preLabels, preData, colors2);
 </script>
 </body>
 </html>

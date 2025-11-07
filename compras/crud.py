@@ -1,6 +1,8 @@
 from .models import OrdenCompra, Requisicion
 from django.contrib import messages
 from django.db import transaction
+from django.core.mail import send_mail
+from telegram_utils import send_telegram_message
 
 class OrdenCompraService:
     @staticmethod
@@ -30,6 +32,64 @@ class OrdenCompraService:
                 observaciones=observaciones,
                 estado='P'
             )
+            # Notify via Telegram
+            message = f"Se ha creado una nueva orden de compra para la requisición {requisicion_id}."
+            send_telegram_message(message)
+
+            # Enviar correo al usuario de compras
+            if requisicion.usuario_compras and requisicion.usuario_compras.email:
+                subject = f"Requisición {requisicion.id} disponible para compras"
+                message = f"""
+                Hola {requisicion.usuario_compras.nombre},
+
+                La requisición con los siguientes datos ha sido aprobada y está disponible para compras:
+
+                Código: {requisicion.codigo}
+                Descripción: {requisicion.descripcion}
+                Fecha de creación: {requisicion.fecha_registro.strftime('%d/%m/%Y')}
+
+                Por favor, revisa la requisición en el sistema.
+
+                Saludos,
+                Equipo de Agrogestión
+                """
+                send_mail(
+                    subject,
+                    message,
+                    'agroluchasistema@gmail.com',  # Correo del sistema
+                    [requisicion.usuario_compras.email],
+                    fail_silently=False,
+                )
+
+            # Enviar notificación al directivo correspondiente
+            if requisicion.directivo and requisicion.directivo.email:
+                directivo_subject = f"Orden de Compra creada para la Requisición {requisicion.id}"
+                directivo_message = f"""
+                Hola {requisicion.directivo.nombre},
+
+                Se ha creado una nueva orden de compra para la requisición con los siguientes datos:
+
+                Código: {requisicion.codigo}
+                Descripción: {requisicion.descripcion}
+                Fecha de creación: {requisicion.fecha_registro.strftime('%d/%m/%Y')}
+
+                Por favor, revisa la orden de compra en el sistema.
+
+                Saludos,
+                Equipo de Agrogestión
+                """
+                send_mail(
+                    directivo_subject,
+                    directivo_message,
+                    'agroluchasistema@gmail.com',  # Correo del sistema
+                    [requisicion.directivo.email],
+                    fail_silently=False,
+                )
+
+                # Enviar mensaje por Telegram al directivo
+                directivo_telegram_message = f"Hola {requisicion.directivo.nombre}, se ha creado una nueva orden de compra para la requisición {requisicion.codigo}. Por favor, revisa el sistema."
+                send_telegram_message(directivo_telegram_message)
+
             messages.success(request, 'Orden de compra creada correctamente.')
             return True
         except Requisicion.DoesNotExist:

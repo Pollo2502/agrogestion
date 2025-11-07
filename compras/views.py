@@ -95,12 +95,21 @@ def ordenes_compra(request):
     # pasar lista de usuarios de contabilidad para asignar expediente
     contabilidad_users = User.objects.filter(puede_contabilidad=True)
 
+    # Obtener comentarios de rechazo asociados a las órdenes de compra del usuario
+    from .models import OrdenCompraComentario
+    comentarios_ordenes = OrdenCompraComentario.objects.filter(
+        orden_compra__requisicion__usuario_compras=user
+    ).select_related('orden_compra', 'autor')  # Optimizar consultas
+    comentarios_unread_count = comentarios_ordenes.filter(leido=False).count()
+
     return render(request, 'ordenes_compra.html', {
         'permisos': permisos,
         'user': user,
         'requisiciones_aprobadas': requisiciones_aprobadas,
         'ordenes': ordenes,
         'contabilidad_users': contabilidad_users,
+        'comentarios_ordenes': comentarios_ordenes,
+        'comentarios_unread_count': comentarios_unread_count,
     })
 
 
@@ -179,6 +188,7 @@ def enviar_expediente_a_contabilidad(request):
     solicitud, created = SolicitudAnticipo.objects.get_or_create(orden=orden)
     solicitud.contabilidad = cont_user
     solicitud.tracking_text = tracking_content
+    solicitud.fecha_envio = timezone.now()  # Set the fecha_envio explicitly
     # Guardar el archivo ZIP en el campo archivo_zip
     solicitud.archivo_zip.save(f'Expediente_{orden.requisicion.codigo}.zip', ContentFile(zip_buffer.read()), save=False)
     solicitud.save()
@@ -301,4 +311,28 @@ def cargar_soporte(request):
     except Exception as e:
         messages.error(request, f'Error al guardar documento de soporte: {e}')
 
+    return redirect('ordenes_compra')
+
+def editar_orden_compra(request):
+    if request.method == 'POST':
+        orden_id = request.POST.get('orden_id')
+        orden = get_object_or_404(OrdenCompra, id=orden_id)
+
+        # Actualizar archivos si se suben nuevos
+        if 'archivo_orden' in request.FILES:
+            orden.archivo_orden = request.FILES['archivo_orden']
+        if 'archivo_cuadro_comparativo' in request.FILES:
+            orden.archivo_cuadro_comparativo = request.FILES['archivo_cuadro_comparativo']
+        if 'archivo_presupuesto' in request.FILES:
+            orden.archivo_presupuesto = request.FILES['archivo_presupuesto']
+
+        # Actualizar observaciones
+        orden.observaciones = request.POST.get('observaciones', orden.observaciones)
+
+        # Cambiar el estado a pendiente
+        orden.estado = 'P'
+        orden.save()
+
+        messages.success(request, 'Orden de compra actualizada y marcada como pendiente.')
+        return redirect('ordenes_compra')
     return redirect('ordenes_compra')

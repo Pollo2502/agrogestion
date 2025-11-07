@@ -11,6 +11,8 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm
 from io import BytesIO
 from django.utils import timezone
+from django.core.mail import send_mail
+from telegram_utils import send_telegram_message
 
 class RequisicionService:
     @staticmethod
@@ -58,6 +60,48 @@ class RequisicionService:
                 estado_preaprobacion='P' if gerente else 'A',
             )
             req.save()
+
+            # Enviar notificación al directivo
+            if directivo.email:
+                subject = f"Nueva Requisición Registrada: {codigo}"
+                message = (
+                    f"Estimado {directivo.nombre},\n\n"
+                    f"Se ha registrado una nueva requisición con los siguientes detalles:\n"
+                    f"Código: {codigo}\n"
+                    f"Descripción: {descripcion}\n"
+                    f"Fecha Requerida: {fecha_requerida}\n"
+                    f"Importancia: {importancia}\n\n"
+                    f"Por favor, revise la requisición en el sistema.\n\n"
+                    f"Saludos,\n"
+                    f"Equipo de Agrogestión"
+                )
+                send_mail(subject, message, 'agroluchasistema@gmail.com', [directivo.email])
+
+            # Enviar notificación al gerente si se requiere preaprobación
+            if gerente and gerente.email:
+                subject = f"Requisición Pendiente de Preaprobación: {codigo}"
+                message = (
+                    f"Estimado {gerente.nombre},\n\n"
+                    f"Se ha registrado una nueva requisición que requiere su preaprobación con los siguientes detalles:\n"
+                    f"Código: {codigo}\n"
+                    f"Descripción: {descripcion}\n"
+                    f"Fecha Requerida: {fecha_requerida}\n"
+                    f"Importancia: {importancia}\n\n"
+                    f"Por favor, revise la requisición en el sistema.\n\n"
+                    f"Saludos,\n"
+                    f"Equipo de Agrogestión"
+                )
+                send_mail(subject, message, 'agroluchasistema@gmail.com', [gerente.email])
+
+            # Notificaciones por Telegram
+            if directivo:
+                directivo_telegram_message = f"Hola {directivo.nombre}, se ha registrado una nueva requisición con código {codigo}. Por favor, revísela en el sistema."
+                send_telegram_message(directivo_telegram_message)
+
+            if gerente:
+                gerente_telegram_message = f"Hola {gerente.nombre}, se ha registrado una nueva requisición con código {codigo} que requiere su preaprobación. Por favor, revísela en el sistema."
+                send_telegram_message(gerente_telegram_message)
+
             # Firmar el PDF con la firma del requisitor (a la izquierda de la firma del directivo)
             try:
                 if user.firma and req.archivo and req.archivo.name.lower().endswith('.pdf'):
@@ -116,7 +160,7 @@ class RequisicionService:
         try:
             req = Requisicion.objects.get(id=req_id)
             if req.usuario != user:
-                messages.error(request, 'No tienes permiso para editar esta requisición')
+                messages.error(request, 'No tienes permiso para editar esta requisición.')
                 return False
 
             codigo = request.POST.get('codigo', '').strip()
@@ -125,11 +169,11 @@ class RequisicionService:
             importancia = request.POST.get('importancia', 'N')
 
             if not codigo:
-                messages.error(request, 'El código es obligatorio')
+                messages.error(request, 'El código es obligatorio.')
                 return False
 
             if codigo != req.codigo and Requisicion.objects.filter(codigo=codigo).exists():
-                messages.error(request, 'El código ya está en uso')
+                messages.error(request, 'El código ya está en uso.')
                 return False
 
             if 'archivo' in request.FILES:
@@ -139,28 +183,23 @@ class RequisicionService:
                         req.archivo.delete()
                     req.archivo = archivo
                 else:
-                    messages.error(request, 'El archivo debe ser PDF y menor a 5MB')
-
-            if 'archivo_aprobacion' in request.FILES:
-                archivo_aprobacion = request.FILES['archivo_aprobacion']
-                if archivo_aprobacion.name.lower().endswith('.pdf') and archivo_aprobacion.size <= 5 * 1024 * 1024:
-                    if req.archivo_aprobacion:
-                        req.archivo_aprobacion.delete()
-                    req.archivo_aprobacion = archivo_aprobacion
-                    req.estado = 'A'
-                else:
-                    messages.error(request, 'El archivo de aprobación debe ser PDF y menor a 5MB')
+                    messages.error(request, 'El archivo debe ser un PDF y menor a 5MB.')
 
             req.codigo = codigo
             req.fecha_requerida = fecha_requerida
             req.descripcion = descripcion
             req.importancia = importancia
+
+            # Reset the state to "Pendiente" if the requisition was previously rejected
+            if req.estado == 'N':  # 'N' represents "Rechazada"
+                req.estado = 'P'  # 'P' represents "Pendiente"
+
             req.save()
-            messages.success(request, f'Requisición {codigo} actualizada exitosamente!')
+            messages.success(request, f'Requisición {codigo} actualizada exitosamente.')
             return True
 
         except Requisicion.DoesNotExist:
-            messages.error(request, 'Requisición no encontrada')
+            messages.error(request, 'Requisición no encontrada.')
             return False
         except Exception as e:
             messages.error(request, f'Error al actualizar requisición: {str(e)}')

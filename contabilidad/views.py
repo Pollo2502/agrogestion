@@ -2,9 +2,9 @@ from django.shortcuts import render, redirect
 from usuarios.models import User
 from django.contrib import messages
 from .models import SolicitudAnticipo
-from django.shortcuts import redirect
-from django.http import FileResponse
+from django.http import FileResponse, JsonResponse
 import os
+import json
 
 def solicitud_anticipo(request):
     user_id = request.session.get('user_id')
@@ -21,28 +21,40 @@ def solicitud_anticipo(request):
         messages.error(request, 'No tienes permisos para contabilidad.')
         return redirect('login')
 
-    # Obtener solicitudes asignadas a este usuario
-    solicitudes = SolicitudAnticipo.objects.filter(contabilidad=user)
+    # Handle AJAX request for status update
+    if request.method == 'POST' and request.headers.get('Content-Type') == 'application/json':
+        try:
+            data = json.loads(request.body)
+            solicitud_id = data.get('solicitud_id')
+            estado = data.get('estado')  # 'F' for Finalizado, 'E' for En Proceso
+            solicitud = SolicitudAnticipo.objects.get(id=solicitud_id, contabilidad=user)
+            solicitud.estado = estado
+            solicitud.save()
+            return JsonResponse({'success': True, 'estado': estado})
+        except SolicitudAnticipo.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Solicitud no encontrada.'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-    # Si se marca una solicitud como en proceso o finalizada
+    # Handle form submission for state change
     if request.method == 'POST':
         accion = request.POST.get('accion')
-        sol_id = request.POST.get('solicitud_id')
+        solicitud_id = request.POST.get('solicitud_id')
         try:
-            sol = SolicitudAnticipo.objects.get(id=sol_id, contabilidad=user)
+            solicitud = SolicitudAnticipo.objects.get(id=solicitud_id, contabilidad=user)
             if accion == 'en_proceso':
-                sol.estado = 'E'
-                sol.save()
-                messages.success(request, 'Solicitud marcada como en proceso.')
+                solicitud.estado = 'E'
+                solicitud.save()
+                messages.success(request, 'Solicitud marcada como En Proceso.')
             elif accion == 'finalizar':
-                sol.estado = 'F'
-                sol.save()
-                messages.success(request, 'Solicitud marcada como finalizada.')
-            elif accion == 'descargar' and sol.archivo_zip:
-                # Devolver el archivo ZIP
-                return FileResponse(sol.archivo_zip.open('rb'), as_attachment=True, filename=os.path.basename(sol.archivo_zip.name))
+                solicitud.estado = 'F'
+                solicitud.save()
+                messages.success(request, 'Solicitud marcada como Finalizada.')
         except SolicitudAnticipo.DoesNotExist:
             messages.error(request, 'Solicitud no encontrada.')
+
+    # Obtener solicitudes asignadas a este usuario
+    solicitudes = SolicitudAnticipo.objects.filter(contabilidad=user)
 
     context = {
         'user': user,

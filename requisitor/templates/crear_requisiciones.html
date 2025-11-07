@@ -140,57 +140,15 @@
                                     </td>
                                     <td>
                                         <!-- Botón editar -->
-                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editarReqModal-{{ req.id }}">
+                                        <button class="btn btn-sm btn-outline-primary btn-edit-req" data-bs-toggle="modal" data-bs-target="#editarReqModal"
+                                            data-req-id="{{ req.id }}"
+                                            data-codigo="{{ req.codigo }}"
+                                            data-fecha="{{ req.fecha_requerida|date:'Y-m-d' }}"
+                                            data-descripcion="{{ req.descripcion|escape }}"
+                                            data-importancia="{{ req.importancia }}">
                                             <i class="fas fa-edit"></i>
                                         </button>
 
-                                        <!-- Modal de edición -->
-                                        <div class="modal fade" id="editarReqModal-{{ req.id }}" tabindex="-1">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <form method="post" enctype="multipart/form-data">
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="accion" value="editar">
-                                                        <input type="hidden" name="id" value="{{ req.id }}">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Editar Requisición</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <!-- Campos del formulario -->
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Código de Requisición:</label>
-                                                                <input type="text" name="codigo" class="form-control" value="{{ req.codigo }}" required>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Fecha Requerida:</label>
-                                                                <input type="date" name="fecha_requerida" class="form-control" value="{{ req.fecha_requerida|date:'Y-m-d' }}" required>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Descripción:</label>
-                                                                <textarea name="descripcion" class="form-control" rows="3">{{ req.descripcion }}</textarea>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Importancia:</label>
-                                                                <select name="importancia" class="form-select">
-                                                                    <option value="N" {% if req.importancia == 'N' %}selected{% endif %}>Normal</option>
-                                                                    <option value="U" {% if req.importancia == 'U' %}selected{% endif %}>Urgente</option>
-                                                                </select>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Archivo de Requisición (PDF):</label>
-                                                                <input type="file" name="archivo" class="form-control" accept=".pdf">
-                                                                <small class="text-muted">Dejar en blanco si no se desea cambiar el archivo</small>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                            <button type="submit" class="btn btn-primary">Guardar cambios</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -273,6 +231,53 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal para editar requisición -->
+    <div class="modal fade" id="editarReqModal" tabindex="-1" aria-labelledby="editarReqModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="editar">
+        <input type="hidden" name="req_id" value="">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editarReqModalLabel">Editar Requisición</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Código de Requisición:</label>
+            <input type="text" name="codigo" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Fecha Requerida:</label>
+            <input type="date" name="fecha_requerida" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descripción:</label>
+            <textarea name="descripcion" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Importancia:</label>
+            <select name="importancia" class="form-select">
+              <option value="N">Normal</option>
+              <option value="U">Urgente</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Archivo de Requisición (PDF):</label>
+            <input type="file" name="archivo" class="form-control" accept=".pdf">
+            <small class="text-muted">Dejar en blanco si no se desea cambiar el archivo.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <!-- Modal para visualizar PDF -->
 <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">

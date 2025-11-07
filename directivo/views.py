@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect
 from .crud import AprobacionService
 from usuarios.models import User
-from compras.models import Requisicion, OrdenCompra
+from compras.models import Requisicion, OrdenCompra, RequisicionComentario, OrdenCompraComentario
 from django.contrib import messages
 from contabilidad.models import SolicitudAnticipo
-from django.db import transaction
+from django.db import transaction, models  # Import models here
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
@@ -46,13 +46,18 @@ def aprobar_requisiciones(request):
         directivo=user
     ).exclude(estado='P')  # Aprobadas o rechazadas
 
+    # Obtener comentarios de rechazo asociados a las requisiciones del directivo
+    comentarios_requisiciones = RequisicionComentario.objects.filter(requisicion__directivo=user)
+    comentarios_unread_count = comentarios_requisiciones.filter(leido=False).count()
+
     return render(request, 'aprobar.html', {
         'permisos': permisos,
         'user': user,
         'requisiciones_pendientes': requisiciones_pendientes,
         'historial_requisiciones': historial_requisiciones,
+        'comentarios_requisiciones': comentarios_requisiciones,
+        'comentarios_unread_count': comentarios_unread_count,
     })
-
 
 def get_permisos(user):
     permisos = []
@@ -93,11 +98,20 @@ def aprobar_compras(request):
     ordenes_pendientes = OrdenCompra.objects.filter(estado='P')  # Pendientes
     historial_ordenes = OrdenCompra.objects.exclude(estado='P')  # Aprobadas o rechazadas
 
+    # Obtener comentarios de rechazo asociados a las órdenes de compra
+    from compras.models import OrdenCompraComentario
+    comentarios_ordenes = OrdenCompraComentario.objects.filter(
+        orden_compra__requisicion__directivo=user
+    ).select_related('orden_compra', 'autor')  # Optimizar consultas
+    comentarios_unread_count = comentarios_ordenes.filter(leido=False).count()
+
     return render(request, 'aprobar_compra.html', {
         'permisos': permisos,
         'user': user,
         'ordenes_pendientes': ordenes_pendientes,
         'historial_ordenes': historial_ordenes,
+        'comentarios_ordenes': comentarios_ordenes,
+        'comentarios_unread_count': comentarios_unread_count,
     })
 
 def panel_directivo(request):
@@ -135,16 +149,41 @@ def panel_directivo(request):
     # Solicitudes enviadas a contabilidad relacionadas con las ordenes del directivo
     solicitudes = SolicitudAnticipo.objects.filter(orden__requisicion__directivo=user)
 
-    # Por quién se está esperando aprobación (si hay estado_preaprobacion pendiente o asignaciones)
-    esperando_por = []
-    for req in requisiciones.filter(estado='P'):
-        responsables = {
-            'requisitor': req.usuario.nombre if req.usuario else None,
-            'compras': req.usuario_compras.nombre if req.usuario_compras else None,
-            'directivo': req.directivo.nombre if req.directivo else None,
-            'gerente': req.gerente.nombre if req.gerente else None,
+    # Buscar tracking por número de requisición
+    search_query = request.GET.get('search', '').strip()
+    tracking_result = None
+    if search_query:
+        try:
+            solicitud = SolicitudAnticipo.objects.get(orden__requisicion__codigo=search_query)
+            tracking_result = solicitud.tracking_text
+        except SolicitudAnticipo.DoesNotExist:
+            messages.error(request, f'No se encontró una solicitud con el código de requisición: {search_query}')
+
+    # Generate data for the candlestick chart
+    requisiciones_volumen = requisiciones.values('fecha_registro').annotate(volumen=models.Count('id')).order_by('fecha_registro')
+    candlestick_data = [
+        {
+            'x': req['fecha_registro'].strftime('%Y-%m-%d'),
+            'y': [req['volumen'], req['volumen'], req['volumen'], req['volumen']]
         }
-        esperando_por.append({'codigo': req.codigo, 'responsables': responsables, 'estado_preaprobacion': req.estado_preaprobacion})
+        for req in requisiciones_volumen
+    ]
+
+    # Datos para gráficas (pastel)
+    count_normal = requisiciones.filter(importancia='N').count()
+    count_urgent = requisiciones.filter(importancia='U').count()
+    importance_labels = ['Normal', 'Urgente']
+    importance_data = [count_normal, count_urgent]
+
+    pre_p = requisiciones.filter(estado_preaprobacion='P').count()
+    pre_a = requisiciones.filter(estado_preaprobacion='A').count()
+    pre_n = requisiciones.filter(estado_preaprobacion='N').count()
+    pre_labels = ['Pendiente', 'Aprobada', 'Negada']
+    pre_data = [pre_p, pre_a, pre_n]
+
+    # Debugging: Print data for pie charts
+    print("Importance Data:", importance_data)
+    print("Pre-Approval Data:", pre_data)
 
     context = {
         'user': user,
@@ -155,27 +194,13 @@ def panel_directivo(request):
         'rechazadas': rechazadas,
         'con_orden': con_orden,
         'solicitudes': solicitudes,
-        'esperando_por': esperando_por,
+        'tracking_result': tracking_result,
+        'search_query': search_query,
+        'candlestick_data_json': json.dumps(candlestick_data),
+        'importance_labels_json': json.dumps(importance_labels),
+        'importance_data_json': json.dumps(importance_data),
+        'pre_labels_json': json.dumps(pre_labels),
+        'pre_data_json': json.dumps(pre_data),
     }
-
-    # Datos para gráficas (pastel)
-    # Distribución por importancia
-    count_normal = requisiciones.filter(importancia='N').count()
-    count_urgent = requisiciones.filter(importancia='U').count()
-    importance_labels = ['Normal', 'Urgente']
-    importance_data = [count_normal, count_urgent]
-
-    # Distribución por estado de preaprobación
-    pre_p = requisiciones.filter(estado_preaprobacion='P').count()
-    pre_a = requisiciones.filter(estado_preaprobacion='A').count()
-    pre_n = requisiciones.filter(estado_preaprobacion='N').count()
-    pre_labels = ['Pendiente', 'Aprobada', 'Negada']
-    pre_data = [pre_p, pre_a, pre_n]
-
-    # Serializar para inyección segura en JS
-    context['importance_labels_json'] = json.dumps(importance_labels)
-    context['importance_data_json'] = json.dumps(importance_data)
-    context['pre_labels_json'] = json.dumps(pre_labels)
-    context['pre_data_json'] = json.dumps(pre_data)
 
     return render(request, 'panel_estadistico.html', context)
