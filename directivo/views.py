@@ -25,7 +25,9 @@ def aprobar_requisiciones(request):
         return redirect('login')
 
     if request.method == 'POST':
-        if 'firmar' in request.POST:
+        # Requisiciones: firma o rechazo
+        # acepta el nombre nuevo 'firmar_requisicion' y mantiene compatibilidad con 'firmar'
+        if 'firmar_requisicion' in request.POST or 'firmar' in request.POST:
             if request.POST.get('req_id'):
                 AprobacionService.firmar_requisicion(request, user)
             else:
@@ -89,7 +91,9 @@ def aprobar_compras(request):
         return redirect('login')
 
     if request.method == 'POST':
-        if 'aprobar' in request.POST:
+        # Para órdenes: priorizar el nombre específico 'firmar_orden' (modal de firma).
+        # Mantener compatibilidad con 'aprobar' (botón directo).
+        if 'firmar_orden' in request.POST or 'aprobar' in request.POST:
             AprobacionService.aprobar_orden_compra(request, user)
         elif 'rechazar' in request.POST:
             AprobacionService.rechazar_orden_compra(request, user)
