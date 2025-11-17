@@ -70,7 +70,7 @@
                 <th>Fecha envío</th>
                 <th>Estado</th>
                 <th>Tracking</th>
-                <th>Archivo ZIP</th>
+                <th>Expediente</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -86,22 +86,42 @@
                   </button>
                 </td>
                 <td>
+                  {% comment %} Mostrar botón para descargar el expediente original (sin portada) o indicar ausencia del expediente {% endcomment %}
                   {% if sol.archivo_zip %}
-                    <a href="#" class="btn btn-sm btn-outline-primary" onclick="event.preventDefault(); document.getElementById('download-form-{{ sol.id }}').submit();">Descargar</a>
-                    <form id="download-form-{{ sol.id }}" method="post" style="display:none;">{% csrf_token %}<input type="hidden" name="accion" value="descargar"><input type="hidden" name="solicitud_id" value="{{ sol.id }}"></form>
+                    <form id="download-original-form-{{ sol.id }}" method="post" style="display:inline;">
+                      {% csrf_token %}
+                      <input type="hidden" name="accion" value="descargar_original">
+                      <input type="hidden" name="solicitud_id" value="{{ sol.id }}">
+                      <button type="submit" class="btn btn-sm btn-outline-primary ms-2">Descargar expediente (sin portada)</button>
+                    </form>
                   {% else %}
-                    Sin archivo
+                    <span class="text-muted">Sin expediente</span>
+                  {% endif %}
+                  {% if sol.portada_pdf %}
+                    <button class="btn btn-sm btn-outline-secondary ms-2 btn-view-portada" data-portada-url="{{ sol.portada_pdf.url }}" data-bs-toggle="modal" data-bs-target="#pdfModal">Ver Portada</button>
                   {% endif %}
                 </td>
                 <td>
-                  <form method="post" style="display:inline;">{% csrf_token %}
+                  <!-- Botón para descargar expediente completo (solo si ya existe portada) -->
+                  <form method="post" style="display:inline;" id="download-full-form-{{ sol.id }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="descargar">
                     <input type="hidden" name="solicitud_id" value="{{ sol.id }}">
-                    <button type="submit" name="accion" value="en_proceso" class="btn btn-sm btn-warning">En Proceso</button>
+                    {% if sol.portada_pdf %}
+                      <button type="submit" class="btn btn-sm btn-outline-primary">Descargar Expediente Completo</button>
+                    {% else %}
+                      <button type="button" class="btn btn-sm btn-outline-primary" disabled title="Crear la portada primero">Descargar Expediente Completo</button>
+                    {% endif %}
                   </form>
-                  <form method="post" style="display:inline;">{% csrf_token %}
-                    <input type="hidden" name="solicitud_id" value="{{ sol.id }}">
-                    <button type="submit" name="accion" value="finalizar" class="btn btn-sm btn-success">Finalizar</button>
-                  </form>
+
+                  <!-- Botón para abrir modal de creación de portada con checklist -->
+                  <button type="button" class="btn btn-sm btn-info ms-2 btn-crear-portada"
+                          data-bs-toggle="modal"
+                          data-bs-target="#crearPortadaModal"
+                          data-solicitud-id="{{ sol.id }}"
+                          data-descargado-by-user="{% if sol.zip_descargado_por and sol.zip_descargado_por.id == user.id %}1{% else %}0{% endif %}">
+                    Crear Portada
+                  </button>
                 </td>
               </tr>
               {% empty %}
@@ -149,6 +169,68 @@
   </div>
 </div>
 
+<!-- Modal para ver el PDF (portada) -->
+<div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pdfModalLabel">Visualizar PDF</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" style="height:80vh;">
+        <iframe id="pdfFrame" src="" width="100%" height="100%" style="border:none;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para crear portada con checklist -->
+<div class="modal fade" id="crearPortadaModal" tabindex="-1" aria-labelledby="crearPortadaModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="formCrearPortada">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="crear_portada">
+        <input type="hidden" name="solicitud_id" id="crearPortadaSolicitudId">
+        <div class="modal-header">
+          <h5 class="modal-title" id="crearPortadaModalLabel">Crear Portada del Expediente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p>Marque el checklist para confirmar que todos los documentos están correctos y completos:</p>
+          <div id="crearPortadaAviso" class="alert alert-warning" style="display:none;">
+             Debes descargar primero el expediente (botón "Descargar expediente (sin portada)") antes de crear la portada.
+          </div>
+          <div class="form-check">
+            <input class="form-check-input checklist-item" type="checkbox" value="factura" id="chkFactura">
+            <label class="form-check-label" for="chkFactura">Factura(s) presente(s)</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input checklist-item" type="checkbox" value="guia" id="chkGuia">
+            <label class="form-check-label" for="chkGuia">Guía de remisión / documentos de transporte</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input checklist-item" type="checkbox" value="orden" id="chkOrden">
+            <label class="form-check-label" for="chkOrden">Orden de compra y requisición</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input checklist-item" type="checkbox" value="cotizaciones" id="chkCotizaciones">
+            <label class="form-check-label" for="chkCotizaciones">Cotizaciones / comparativos</label>
+          </div>
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" value="confirmacion" id="chkConfirmacion">
+            <label class="form-check-label" for="chkConfirmacion">Confirmo que revisé todos los documentos</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" id="btnCrearPortada" class="btn btn-primary" disabled>Crear y Cargar Portada</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -158,6 +240,92 @@ document.addEventListener('DOMContentLoaded', function() {
       const trackingText = this.getAttribute('data-tracking');
       const decodedText = trackingText.replace(/\\u000A/g, '\n').replace(/\\u002D/g, '-').replace(/\\u003D/g, '=');
       document.getElementById('trackingContent').textContent = decodedText; // Render decoded text
+    });
+  });
+
+  // Abrir modal para ver portada PDF
+  document.querySelectorAll('.btn-view-portada').forEach(function(button) {
+    button.addEventListener('click', function() {
+      var url = button.getAttribute('data-portada-url');
+      var frame = document.getElementById('pdfFrame');
+      frame.src = url;
+    });
+  });
+
+  // Limpiar iframe al cerrar el modal para liberar memoria
+  var pdfModalEl = document.getElementById('pdfModal');
+  if (pdfModalEl) {
+    pdfModalEl.addEventListener('hidden.bs.modal', function () {
+      var frame = document.getElementById('pdfFrame');
+      if (frame) frame.src = '';
+    });
+  }
+
+  // Abrir modal para crear portada y setear solicitud_id
+  document.querySelectorAll('.btn-crear-portada').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var sid = btn.getAttribute('data-solicitud-id');
+      var descargadoByUser = btn.getAttribute('data-descargado-by-user') === '1';
+      document.getElementById('crearPortadaSolicitudId').value = sid;
+      // reset checklist and button
+      document.querySelectorAll('#crearPortadaModal .checklist-item').forEach(function(ch){ ch.checked = false; });
+      document.getElementById('chkConfirmacion').checked = false;
+      document.getElementById('btnCrearPortada').disabled = true;
+      // mostrar aviso si no fue descargado por este usuario
+      var aviso = document.getElementById('crearPortadaAviso');
+      if (!descargadoByUser) {
+        aviso.style.display = 'block';
+      } else {
+        aviso.style.display = 'none';
+      }
+      // almacenar estado en el modal para validar en JS
+      document.getElementById('crearPortadaModal').setAttribute('data-descargado-by-user', descargadoByUser ? '1' : '0');
+    });
+  });
+
+  // Habilitar el botón solo si todas las checklist-item y confirmación están marcadas
+  function updateCrearPortadaButtonState() {
+    var items = document.querySelectorAll('#crearPortadaModal .checklist-item');
+    var allChecked = Array.prototype.every.call(items, function(ch){ return ch.checked; });
+    var confirm = document.getElementById('chkConfirmacion').checked;
+    var descargadoByUser = document.getElementById('crearPortadaModal').getAttribute('data-descargado-by-user') === '1';
+    // Habilitar solo si descargado por este usuario Y checklist OK
+    document.getElementById('btnCrearPortada').disabled = !(allChecked && confirm && descargadoByUser);
+  }
+  document.querySelectorAll('#crearPortadaModal .checklist-item, #chkConfirmacion').forEach(function(el) {
+    el.addEventListener('change', updateCrearPortadaButtonState);
+  });
+
+  // Envío del formulario de crear portada (usando el form normal POST)
+  var formCrear = document.getElementById('formCrearPortada');
+  if (formCrear) {
+    formCrear.addEventListener('submit', function(e) {
+      // dejar que el form se envíe; el servidor genera y guarda la portada
+      // opcional: mostrar spinner o bloqueo aquí
+    });
+  }
+
+  // Cuando se envía un formulario de descarga original, actualizar la UI para permitir crear la portada sin recargar
+  document.querySelectorAll('form[id^="download-original-form-"]').forEach(function(form) {
+    form.addEventListener('submit', function() {
+      var sidInput = form.querySelector('input[name="solicitud_id"]');
+      if (!sidInput) return;
+      var sid = sidInput.value;
+      // Actualizar el atributo del botón "Crear Portada" correspondiente
+      var createBtn = document.querySelector('.btn-crear-portada[data-solicitud-id="' + sid + '"]');
+      if (createBtn) {
+        createBtn.setAttribute('data-descargado-by-user', '1');
+      }
+      // Si el modal de creación está abierto y corresponde a la misma solicitud, actualizar su estado
+      var modal = document.getElementById('crearPortadaModal');
+      var modalSidEl = document.getElementById('crearPortadaSolicitudId');
+      if (modal && modalSidEl && modalSidEl.value === sid) {
+        modal.setAttribute('data-descargado-by-user', '1');
+        var aviso = document.getElementById('crearPortadaAviso');
+        if (aviso) aviso.style.display = 'none';
+        try { updateCrearPortadaButtonState(); } catch (err) { /* no-op */ }
+      }
+      // El submit continúa y el navegador realizará la descarga; el backend marcará la trazabilidad.
     });
   });
 });

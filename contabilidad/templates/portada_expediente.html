@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Portada - {{ orden.numero|default:orden.id }}</title>
+  <style>
+    /* Estilos simples compatibles con xhtml2pdf */
+    body { font-family: Arial, Helvetica, sans-serif; font-size:12px; color:#222; margin:20px; }
+    h1 { font-size:18px; margin:0 0 6px 0; }
+    h2 { font-size:14px; margin:6px 0 12px 0; font-weight:normal; color:#444; }
+    .section { margin-bottom:12px; }
+    table { width:100%; border-collapse:collapse; }
+    .box { border:1px solid #ddd; padding:8px; margin-bottom:8px; }
+    .meta-table td { vertical-align:top; padding:6px; border:1px solid #eee; }
+    .label { font-weight:700; width:30%; }
+    .value { width:70%; }
+    .muted { color:#666; font-size:11px; }
+    .firma { margin-top:18px; }
+    .firma img { max-width:260px; max-height:80px; border:1px solid #ddd; padding:4px; background:#fff; display:block; }
+    .footer { margin-top:18px; font-size:11px; color:#666; text-align:center; }
+    pre { white-space:pre-wrap; font-family:inherit; font-size:12px; }
+  </style>
+</head>
+<body>
+  <h1>Portada de Expediente</h1>
+  <h2>Orden de Compra: {{ orden.numero|default:orden.id }}</h2>
+
+  <div class="section box">
+    <table class="meta-table">
+      <tr>
+        <td class="label">Nº Solicitud</td>
+        <td class="value">{{ solicitud.id|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Fecha de envío</td>
+        <td class="value">{% if solicitud.fecha_envio %}{{ solicitud.fecha_envio|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">Estado</td>
+        <td class="value">{{ solicitud.get_estado_display|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Tracking</td>
+        <td class="value">{% if solicitud.tracking_text %}<pre>{{ solicitud.tracking_text }}</pre>{% else %}-{% endif %}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section box">
+    <table class="meta-table">
+      <tr>
+        <td class="label">Requisición</td>
+        <td class="value">{{ requisicion.codigo|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Solicitante</td>
+        <td class="value">{% if requisicion.usuario %}{{ requisicion.usuario.nombre }}{% else %}-{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">Fecha Requerida</td>
+        <td class="value">{% if requisicion.fecha_requerida %}{{ requisicion.fecha_requerida|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">Importancia</td>
+        <td class="value">{% if requisicion.importancia == 'U' %}Urgente{% else %}Normal{% endif %}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section box">
+    <table class="meta-table">
+      <tr>
+        <td class="label">Total Orden</td>
+        <td class="value">{% if orden.total %}{{ orden.total|floatformat:2 }}{% else %}-{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">Moneda</td>
+        <td class="value">{% if orden.moneda %}{{ orden.moneda }}{% else %}-{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="label">Descripción</td>
+        <td class="value">{% if orden.descripcion %}{{ orden.descripcion }}{% elif requisicion.descripcion %}{{ requisicion.descripcion }}{% else %}-{% endif %}</td>
+      </tr>
+    </table>
+  </div>
+
+  {% if orden.proveedor %}
+  <div class="section box">
+    <table class="meta-table">
+      <tr>
+        <td class="label">Proveedor</td>
+        <td class="value">{{ orden.proveedor.nombre|default:orden.proveedor }}</td>
+      </tr>
+      <tr>
+        <td class="label">RIF / ID</td>
+        <td class="value">{{ orden.proveedor.rif|default:"-" }}</td>
+      </tr>
+      <tr>
+        <td class="label">Banco / Cuenta</td>
+        <td class="value">
+          {% if orden.proveedor.banco %}{{ orden.proveedor.banco }}{% endif %}
+          {% if orden.proveedor.cuenta_bancaria %} — {{ orden.proveedor.cuenta_bancaria }}{% endif %}
+          {% if not orden.proveedor.banco and not orden.proveedor.cuenta_bancaria %}-{% endif %}
+        </td>
+      </tr>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="firma">
+    <div><strong>Generado y verificado por</strong></div>
+    <div style="margin-top:6px;">
+      <div>{{ user.nombre|default:user.nombre_completo|default:"Usuario" }} — Contabilidad</div>
+      {% if user.firma %}
+        <img src="{{ user.firma.url }}" alt="Firma de {{ user.nombre }}">
+      {% else %}
+        <div class="muted">Sin firma registrada</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="footer">
+    Generado por Agrogestión — {{ user.nombre|default:"Sistema" }}{% if now %} — {{ now|date:"d/m/Y H:i" }}{% endif %}
+  </div>
+</body>
+</html>
+

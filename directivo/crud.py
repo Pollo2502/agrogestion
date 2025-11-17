@@ -179,13 +179,14 @@ class AprobacionService:
                 packet = BytesIO()
                 can = canvas.Canvas(packet, pagesize=letter)
 
-                # Configuración de la posición y dimensiones de la firma
                 firma_width = 3 * cm
                 firma_height = 1.5 * cm
                 page_width, page_height = letter
-                # Mover 5 cm a la derecha y 0.5 cm hacia abajo respecto a la posición anterior
-                x = (page_width - firma_width) / 2.5 - (10 * cm)  # Ajusta la posición horizontal
-                y = 2.7 * cm - (0.5 * cm)  # Ajusta la posición vertical (hacia abajo)
+                gap = 3 * cm
+                x_directivo_est = (page_width - firma_width) / 2.5
+                x_requisitor = max(0.5 * cm, x_directivo_est - firma_width - (0.5 * cm) - (3 * cm))
+                x = x_requisitor + firma_width + gap
+                y = 2.7 * cm
 
                 # Dibuja la imagen de la firma
                 can.drawImage(user.firma.path, x, y, width=firma_width, height=firma_height, mask='auto')
@@ -194,7 +195,7 @@ class AprobacionService:
                 fecha_firma = timezone.now().strftime("%d/%m/%Y %H:%M:%S")
                 can.setFont("Helvetica", 10)
                 can.drawString(x, y - 15, f"Firmado por: {user.nombre_completo}")
-                can.drawString(x, y - 30, f"Fecha: {fecha_firma}")
+                can.drawString(x, y - 30, f"{fecha_firma}")
 
                 can.save()
                 packet.seek(0)

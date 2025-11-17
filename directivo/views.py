@@ -181,6 +181,23 @@ def panel_directivo(request):
     pre_labels = ['Pendiente', 'Aprobada', 'Negada']
     pre_data = [pre_p, pre_a, pre_n]
 
+    # Construir lista para la tabla "Requisiciones pendientes y responsables"
+    # Cada item contiene: codigo, responsables (dict con posibles claves requisitor, compras, gerente, directivo)
+    pendientes_qs = requisiciones.filter(estado='P').select_related('usuario', 'usuario_compras', 'gerente', 'directivo')
+    esperando_por = []
+    for r in pendientes_qs:
+        responsables = {
+            'requisitor': getattr(r.usuario, 'nombre', None) if getattr(r, 'usuario', None) else None,
+            'compras': getattr(r.usuario_compras, 'nombre', None) if getattr(r, 'usuario_compras', None) else None,
+            'gerente': getattr(r.gerente, 'nombre', None) if getattr(r, 'gerente', None) else None,
+            'directivo': getattr(r.directivo, 'nombre', None) if getattr(r, 'directivo', None) else None,
+        }
+        esperando_por.append({
+            'codigo': r.codigo,
+            'responsables': responsables,
+            'estado_preaprobacion': r.estado_preaprobacion,
+        })
+
     # Debugging: Print data for pie charts
     print("Importance Data:", importance_data)
     print("Pre-Approval Data:", pre_data)
@@ -194,6 +211,7 @@ def panel_directivo(request):
         'rechazadas': rechazadas,
         'con_orden': con_orden,
         'solicitudes': solicitudes,
+        'esperando_por': esperando_por,
         'tracking_result': tracking_result,
         'search_query': search_query,
         'candlestick_data_json': json.dumps(candlestick_data),

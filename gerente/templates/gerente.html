@@ -236,19 +236,26 @@
 <div class="modal fade" id="firmarModal" tabindex="-1" aria-labelledby="firmarModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form method="post">
+            <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="hidden" name="req_id" id="modalReqId">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="firmarModalLabel">Preaprobar Requisición</h5>
+                    <h5 class="modal-title" id="firmarModalLabel">Firmar Requisición</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body text-center">
-                    <p>¿Deseas preaprobar esta requisición?</p>
+                    <p>¿Deseas firmar esta requisición?</p>
+                    {% if user.firma %}
+                        <img src="{{ user.firma.url }}" alt="Firma" style="max-width:200px;max-height:100px;">
+                    {% else %}
+                        <p class="text-danger">No tienes firma registrada.</p>
+                    {% endif %}
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="firmar" class="btn btn-success" id="btnFirmarModal">Preaprobar</button>
+                    <button type="submit" name="firmar" class="btn btn-success" {% if not user.firma %}disabled{% endif %}>
+                        Firmar y Aprobar
+                    </button>
                 </div>
             </form>
         </div>

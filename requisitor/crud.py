@@ -109,16 +109,12 @@ class RequisicionService:
                     output_pdf = BytesIO()
                     packet = BytesIO()
                     can = canvas.Canvas(packet, pagesize=letter)
-
-                    # Configuración de la posición y dimensiones de la firma (igual que directivo, pero a la izquierda)
                     firma_width = 3 * cm
                     firma_height = 1.5 * cm
                     page_width, page_height = letter
                     x_directivo = (page_width - firma_width) / 2.5
-                    # place requisitor signature to the left of the directivo signature with small gap
-                    # move 1 cm further left as requested
                     x_requisitor = max(0.5 * cm, x_directivo - firma_width - (0.5 * cm) - (3 * cm))
-                    y = 2.7 * cm
+                    y = max(0.1 * cm, (2.7 * cm) - (0.5 * cm))
 
                     # Dibuja la imagen de la firma del requisitor
                     can.drawImage(user.firma.path, x_requisitor, y, width=firma_width, height=firma_height, mask='auto')

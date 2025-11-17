@@ -1,21 +1,22 @@
 from .models import User, Ceco
 from django.contrib.auth.hashers import make_password
 
-def crear_usuario(nombre, nombre_completo, password, email=None, telefono=None,
+def crear_usuario(nombre, nombre_completo, password, firma=None, email=None, telefono=None,
                   es_admin=False, puede_compras=False, puede_requisiciones=False,
-                  puede_aprobar=False, es_gerente=False, firma=None, ceco_id=None,
+                  puede_aprobar=False, es_gerente=False, ceco_id=None,
                   tipo_comprador=None, puede_contabilidad=False):
+    # Firma obligatoria solo si el usuario tendrá permisos que requieren firma:
+    # compras, contabilidad, aprobar, gerente o requisiciones
+    permiso_firma_requerido = puede_compras or puede_contabilidad or puede_aprobar or es_gerente or puede_requisiciones
+    if permiso_firma_requerido and not firma:
+        return None, "La firma es obligatoria para usuarios con permisos de compras/contabilidad/aprobar/gerente/requisiciones."
     if User.objects.filter(nombre=nombre).exists():
         return None, "El nombre de usuario ya existe."
     if email and User.objects.filter(email=email).exists():
         return None, "El email ya está registrado."
     ceco = Ceco.objects.get(id=ceco_id) if ceco_id else None
     hashed_password = make_password(password)
-    # Assign firma if the user can approve, is gerente, can make requisitions or is a comprador
-    assign_firma = None
-    if firma and (puede_aprobar or es_gerente or puede_requisiciones or puede_compras):
-        assign_firma = firma
-
+    # Asignar la firma proporcionada (obligatoria)
     user = User(
         nombre=nombre,
         nombre_completo=nombre_completo,
@@ -28,7 +29,7 @@ def crear_usuario(nombre, nombre_completo, password, email=None, telefono=None,
         puede_aprobar=puede_aprobar,
         puede_contabilidad=puede_contabilidad,
         es_gerente=es_gerente,
-        firma=assign_firma,
+        firma=firma,
         ceco=ceco,
         tipo_comprador=tipo_comprador if puede_compras else None
     )
@@ -83,8 +84,7 @@ def modificar_usuario(user_id, nombre=None, nombre_completo=None, email=None, te
             user.es_gerente = es_gerente
         if ceco_id is not None:
             user.ceco = Ceco.objects.get(id=ceco_id)
-        # Update firma: keep it if the user has any permission that allows firma (aprobar, gerente, requisitor, compras)
-        permiso_firma_actual = user.puede_aprobar or user.es_gerente or user.puede_requisiciones or user.puede_compras
+        # Update firma: determinar si los permisos resultantes requieren firma (incluye contabilidad)
         permiso_firma_nuevo = False
         if puede_aprobar is not None:
             permiso_firma_nuevo = puede_aprobar or permiso_firma_nuevo
@@ -94,15 +94,20 @@ def modificar_usuario(user_id, nombre=None, nombre_completo=None, email=None, te
             permiso_firma_nuevo = puede_requisiciones or permiso_firma_nuevo
         if puede_compras is not None:
             permiso_firma_nuevo = puede_compras or permiso_firma_nuevo
+        if puede_contabilidad is not None:
+            permiso_firma_nuevo = puede_contabilidad or permiso_firma_nuevo
 
-        # If a new firma file is provided and the resulting permissions include firma, set it
-        if firma is not None and permiso_firma_nuevo:
-            # replace existing file (Django will handle storage)
+        # Si los nuevos permisos requieren firma pero no hay firma actual ni se sube una nueva -> error
+        if permiso_firma_nuevo and not getattr(user, 'firma', None) and firma is None:
+            return None, "Se requiere una firma al asignar permisos de compras/contabilidad/aprobar/gerente/requisiciones."
+
+        # Si se recibe un nuevo archivo de firma, reemplazarlo (permitir siempre cambiar firma)
+        if firma is not None:
             if user.firma:
                 user.firma.delete(save=False)
             user.firma = firma
         else:
-            # If the resulting permissions do NOT include firma, remove existing signature
+            # Si no se proporcionó firma y los permisos resultantes NO permiten firma, eliminarla
             if not permiso_firma_nuevo:
                 if user.firma:
                     user.firma.delete(save=False)

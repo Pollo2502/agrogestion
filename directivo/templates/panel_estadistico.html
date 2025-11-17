@@ -249,17 +249,17 @@ document.getElementById('sidebarToggle')?.addEventListener('click', function(){
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Debugging: Log data passed to the charts
-console.log('Importance Labels:', {{ importance_labels_json|safe }});
-console.log('Importance Data:', {{ importance_data_json|safe }});
-console.log('Pre-Approval Labels:', {{ pre_labels_json|safe }});
-console.log('Pre-Approval Data:', {{ pre_data_json|safe }});
+console.log('Importance Labels:', {{ importance_labels_json|default:"[]"|safe }});
+console.log('Importance Data:', {{ importance_data_json|default:"[]"|safe }});
+console.log('Pre-Approval Labels:', {{ pre_labels_json|default:"[]"|safe }});
+console.log('Pre-Approval Data:', {{ pre_data_json|default:"[]"|safe }});
 
 // Ensure the data is valid before initializing the charts
 try {
-  const importanceLabels = {{ importance_labels_json|safe }};
-  const importanceData = {{ importance_data_json|safe }};
-  const preLabels = {{ pre_labels_json|safe }};
-  const preData = {{ pre_data_json|safe }};
+  const importanceLabels = {{ importance_labels_json|default:"[]"|safe }};
+  const importanceData = {{ importance_data_json|default:"[]"|safe }};
+  const preLabels = {{ pre_labels_json|default:"[]"|safe }};
+  const preData = {{ pre_data_json|default:"[]"|safe }};
 
   // Check if the data is empty or malformed
   if (!Array.isArray(importanceLabels) || !Array.isArray(importanceData)) {
@@ -300,6 +300,9 @@ try {
   // Render Pie Charts
   createPieChart('chartImportance', importanceLabels, importanceData, colors1);
   createPieChart('chartPreaprob', preLabels, preData, colors2);
+} catch (err) {
+  console.error('Error inicializando las gráficas:', err);
+}
 </script>
 </body>
 </html>

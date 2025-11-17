@@ -250,7 +250,7 @@
                 </tr>
 
                 <!-- Modal Editar Usuario -->
-                <div class="modal fade" id="editarUsuarioModal{{ usuario.id }}" tabindex="-1" aria-labelledby="editarUsuarioModalLabel{{ usuario.id }}" aria-hidden="true">
+                <div class="modal fade" id="editarUsuarioModal{{ usuario.id }}" data-has-firma="{% if usuario.firma %}1{% else %}0{% endif %}" tabindex="-1" aria-labelledby="editarUsuarioModalLabel{{ usuario.id }}" aria-hidden="true">
                   <div class="modal-dialog">
                     <div class="modal-content">
                       <form method="post" enctype="multipart/form-data">
@@ -313,7 +313,7 @@
                               <label class="form-check-label" for="gerente{{ usuario.id }}">Gerente</label>
                             </div>
                           </div>
-                          <div class="mb-3 firma-field" id="firmaField{{ usuario.id }}" style="{% if usuario.puede_aprobar or usuario.es_gerente or usuario.puede_requisiciones or usuario.puede_compras %}display:block;{% else %}display:none;{% endif %}">
+                          <div class="mb-3 firma-field" id="firmaField{{ usuario.id }}" style="{% if usuario.puede_aprobar or usuario.es_gerente or usuario.puede_requisiciones or usuario.puede_compras or usuario.puede_contabilidad %}display:block;{% else %}display:none;{% endif %}">
                             <label for="firma{{ usuario.id }}" class="form-label">Firma (PNG)</label>
                             <input class="form-control" type="file" name="firma" id="firma{{ usuario.id }}" accept="image/png">
                             {% if usuario.firma %}
@@ -388,9 +388,10 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
   // Helper to decide if firma should be shown based on permisos
   function hasFirmaPermission(container) {
-    var checkboxes = container.querySelectorAll('.permiso-toggle');
+    // Mostrar firma si existe cualquier permiso marcado distinto de 'es_admin'
+    var checkboxes = container.querySelectorAll('input[name="permisos"]');
     return Array.from(checkboxes).some(function(cb) {
-      return cb.checked && ['puede_aprobar', 'es_gerente', 'puede_requisiciones', 'puede_compras'].includes(cb.value);
+      return cb.checked && cb.value !== 'es_admin';
     });
   }
 
@@ -401,12 +402,18 @@ document.addEventListener('DOMContentLoaded', function() {
     var crearTipoField = document.getElementById('tipoCompradorField');
 
     function updateCrear() {
-      if (crearFirmaField) crearFirmaField.style.display = hasFirmaPermission(crearModal) ? 'block' : 'none';
-      var comprasCb = crearModal.querySelector('.permiso-compras');
+      var show = hasFirmaPermission(crearModal);
+      if (crearFirmaField) {
+        crearFirmaField.style.display = show ? 'block' : 'none';
+        var inp = document.getElementById('firma');
+        if (inp) inp.required = show;
+      }
+       var comprasCb = crearModal.querySelector('.permiso-compras');
       if (crearTipoField) crearTipoField.style.display = (comprasCb && comprasCb.checked) ? 'block' : 'none';
     }
 
-    crearModal.querySelectorAll('.permiso-toggle, .permiso-compras').forEach(function(cb){
+    // Escuchar cambios en TODOS los checkboxes de permisos del modal
+    crearModal.querySelectorAll('input[name="permisos"]').forEach(function(cb){
       cb.addEventListener('change', updateCrear);
     });
     updateCrear();
@@ -419,11 +426,18 @@ document.addEventListener('DOMContentLoaded', function() {
       var firmaField = document.getElementById('firmaField' + idSuffix);
       var tipoField = document.getElementById('tipoCompradorField' + idSuffix);
       var showFirma = hasFirmaPermission(modal);
-      if (firmaField) firmaField.style.display = showFirma ? 'block' : 'none';
+      if (firmaField) {
+        firmaField.style.display = showFirma ? 'block' : 'none';
+        var inputFile = document.getElementById('firma' + idSuffix);
+        var hasFirma = modal.getAttribute('data-has-firma') === '1';
+        // Requerir firma solo si permisos requieren firma y el usuario no tiene firma aún
+        if (inputFile) inputFile.required = (showFirma && !hasFirma);
+      }
       var comprasCb = modal.querySelector('.permiso-compras');
       if (tipoField) tipoField.style.display = (comprasCb && comprasCb.checked) ? 'block' : 'none';
     }
-    modal.querySelectorAll('.permiso-toggle, .permiso-compras').forEach(function(cb){
+    // Escuchar cambios en TODOS los checkboxes de permisos del modal de edición
+    modal.querySelectorAll('input[name="permisos"]').forEach(function(cb){
       cb.addEventListener('change', updateEdit);
     });
     updateEdit();

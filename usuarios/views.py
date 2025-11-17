@@ -16,7 +16,6 @@ def login(request):
                 messages.error(request, 'Usuario bloqueado')
             elif user.password == password or check_password(password, user.password):
                 request.session['user_id'] = user.pk
-                # Redirección según permisos
                 if user.es_admin:
                     return redirect('panel_control')
                 elif user.es_gerente:
@@ -28,7 +27,7 @@ def login(request):
                 elif user.puede_requisiciones:
                     return redirect('crear_requisiciones')
                 elif user.puede_aprobar:
-                    return redirect('aprobar_requisiciones')
+                    return redirect('panel_directivo')
                 else:
                     messages.error(request, 'No tiene permisos asignados')
             else:
@@ -76,16 +75,25 @@ def panel_control(request):
             puede_aprobar = 'puede_aprobar' in permisos_list
             puede_contabilidad = 'puede_contabilidad' in permisos_list
             es_gerente = 'es_gerente' in permisos_list
-            # allow firma upload if user can approve, is gerente, can requisitions or can compras
-            firma = request.FILES.get('firma') if (puede_aprobar or es_gerente or puede_requisiciones or puede_compras) else None
+            # leer la firma si fue subida
+            firma = request.FILES.get('firma')
             tipo_comprador = request.POST.get('tipo_comprador') if puede_compras else None
 
+            # Pasar argumentos por nombre para evitar ambigüedades
             nuevo_usuario, error = crear_usuario(
-                nombre, nombre_completo, password, email, telefono,
-                es_admin=es_admin, puede_compras=puede_compras,
+                nombre=nombre,
+                nombre_completo=nombre_completo,
+                password=password,
+                firma=firma,
+                email=email,
+                telefono=telefono,
+                es_admin=es_admin,
+                puede_compras=puede_compras,
                 puede_requisiciones=puede_requisiciones,
-                puede_aprobar=puede_aprobar, es_gerente=es_gerente,
-                firma=firma, ceco_id=ceco_id, tipo_comprador=tipo_comprador,
+                puede_aprobar=puede_aprobar,
+                es_gerente=es_gerente,
+                ceco_id=ceco_id,
+                tipo_comprador=tipo_comprador,
                 puede_contabilidad=puede_contabilidad
             )
             if error:
@@ -108,8 +116,8 @@ def panel_control(request):
             puede_aprobar = 'puede_aprobar' in permisos_list
             puede_contabilidad = 'puede_contabilidad' in permisos_list
             es_gerente = 'es_gerente' in permisos_list
-            # allow firma upload for edit when any of the firma-related permisos are present
-            firma = request.FILES.get('firma') if (puede_aprobar or es_gerente or puede_requisiciones or puede_compras) else None
+            # Leer firma si fue enviada
+            firma = request.FILES.get('firma')
             tipo_comprador = request.POST.get('tipo_comprador') if puede_compras else None
 
             user, error = modificar_usuario(
