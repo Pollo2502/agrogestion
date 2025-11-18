@@ -78,6 +78,47 @@ def generar_portada_pdf_bytes(solicitud, contabilidad_user):
                     if fname and fname in html:
                         html = html.replace(fname, data_uri)
     except Exception:
+        # No bloquear por problemas de firma
+        pass
+
+    # Intentar embeber logo estático (images/logo.png) como data URI para asegurar disponibilidad
+    try:
+        logo_static_rel = 'images/logo.png'
+        # buscar mediante finders (si está disponible)
+        logo_path = None
+        try:
+            logo_path = finders.find(logo_static_rel)
+        except Exception:
+            logo_path = None
+        # fallback a STATIC_ROOT
+        if not logo_path and getattr(settings, 'STATIC_ROOT', None):
+            possible = os.path.join(settings.STATIC_ROOT, logo_static_rel)
+            if os.path.exists(possible):
+                logo_path = possible
+        if logo_path and os.path.exists(logo_path):
+            with open(logo_path, 'rb') as f:
+                img_bytes = f.read()
+            mime, _ = mimetypes.guess_type(logo_path)
+            if not mime:
+                mime = 'image/png'
+            data_uri = 'data:%s;base64,%s' % (mime, base64.b64encode(img_bytes).decode('ascii'))
+            # Reemplazar la URL renderizada por static (STATIC_URL + rel) si aparece
+            try:
+                static_url = (settings.STATIC_URL or '') + logo_static_rel
+                if static_url in html:
+                    html = html.replace(static_url, data_uri)
+                else:
+                    # fallback: reemplazar por basename
+                    fname = os.path.basename(logo_path)
+                    if fname and fname in html:
+                        html = html.replace(fname, data_uri)
+            except Exception:
+                # No bloquear si no se puede reemplazar
+                pass
+    except Exception:
+        # No bloquear la generación por problemas al embeber el logo
+        pass
+    except Exception:
         # No bloquear la generación por problemas al leer la firma; WeasyPrint podrá fallar después con mensaje claro.
         pass
 
