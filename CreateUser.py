@@ -1,7 +1,8 @@
 import os
+import sys
+import argparse
 import django
-from tkinter import *
-from tkinter import messagebox
+from getpass import getpass
 from django.contrib.auth.hashers import make_password
 
 # Configura Django
@@ -10,65 +11,66 @@ django.setup()
 
 from usuarios.models import User
 
-def registrar_usuario():
-    nombre = entry_nombre.get()
-    password = entry_password.get()
-    email = entry_email.get()
-    telefono = entry_telefono.get()
-
+def registrar_usuario_cli(nombre, password, email=None, telefono=None):
+    """
+    Registra un usuario usando parámetros (útil para CLI).
+    Devuelve (True, mensaje) o (False, mensaje)
+    """
     if not nombre or not password:
-        messagebox.showerror("Error", "Nombre y contraseña son obligatorios.")
-        return
+        return False, "Nombre y contraseña son obligatorios."
 
     if User.objects.filter(nombre=nombre).exists():
-        messagebox.showerror("Error", "El nombre de usuario ya existe.")
-        return
+        return False, "El nombre de usuario ya existe."
 
     if email and User.objects.filter(email=email).exists():
-        messagebox.showerror("Error", "El email ya está registrado.")
-        return
+        return False, "El email ya está registrado."
 
-    hashed_password = make_password(password)
-    user = User(
-        nombre=nombre,
-        password=hashed_password,
-        email=email if email else None,
-        telefono=telefono if telefono else None
-    )
-    user.save()
-    messagebox.showinfo("Éxito", "Usuario registrado correctamente.")
-    entry_nombre.delete(0, END)
-    entry_password.delete(0, END)
-    entry_email.delete(0, END)
-    entry_telefono.delete(0, END)
+    try:
+        hashed_password = make_password(password)
+        user = User(
+            nombre=nombre,
+            password=hashed_password,
+            email=email if email else None,
+            telefono=telefono if telefono else None
+        )
+        user.save()
+        return True, "Usuario registrado correctamente."
+    except Exception as e:
+        return False, f"Error al guardar usuario: {e}"
 
-# Interfaz Tkinter
-root = Tk()
-root.title("Registro de Usuario Admin")
-root.geometry("350x300")
-root.resizable(False, False)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Registrar usuario en Django (CLI).")
+    parser.add_argument('--nombre', '-u', help='Nombre de usuario')
+    parser.add_argument('--password', '-p', help='Contraseña')
+    parser.add_argument('--email', '-e', help='Email (opcional)')
+    parser.add_argument('--telefono', '-t', help='Teléfono (opcional)')
+    args = parser.parse_args()
 
-Label(root, text="Registro de Usuario", font=("Arial", 16)).pack(pady=10)
+    nombre = args.nombre
+    password = args.password
+    email = args.email
+    telefono = args.telefono
 
-frame = Frame(root)
-frame.pack(pady=10)
+    try:
+        if not nombre:
+            nombre = input("Nombre de usuario: ").strip()
+        if not password:
+            password = getpass("Contraseña: ")
+            if not password:
+                # permitir reintento simple
+                password = getpass("Contraseña (nuevamente): ")
+        if email is None:
+            email = input("Email (opcional): ").strip() or None
+        if telefono is None:
+            telefono = input("Teléfono (opcional): ").strip() or None
+    except KeyboardInterrupt:
+        print("\nOperación cancelada.")
+        sys.exit(2)
 
-Label(frame, text="Nombre:").grid(row=0, column=0, sticky=E, pady=5)
-entry_nombre = Entry(frame, width=25)
-entry_nombre.grid(row=0, column=1, pady=5)
-
-Label(frame, text="Contraseña:").grid(row=1, column=0, sticky=E, pady=5)
-entry_password = Entry(frame, show="*", width=25)
-entry_password.grid(row=1, column=1, pady=5)
-
-Label(frame, text="Email:").grid(row=2, column=0, sticky=E, pady=5)
-entry_email = Entry(frame, width=25)
-entry_email.grid(row=2, column=1, pady=5)
-
-Label(frame, text="Teléfono:").grid(row=3, column=0, sticky=E, pady=5)
-entry_telefono = Entry(frame, width=25)
-entry_telefono.grid(row=3, column=1, pady=5)
-
-Button(root, text="Registrar", command=registrar_usuario, width=15, bg="#4CAF50", fg="white").pack(pady=15)
-
-root.mainloop()
+    ok, msg = registrar_usuario_cli(nombre, password, email, telefono)
+    if ok:
+        print(msg)
+        sys.exit(0)
+    else:
+        print("Error:", msg)
+        sys.exit(1)

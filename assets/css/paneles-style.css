@@ -1,4 +1,4 @@
-        /* Colores para fondos de iconos */
+/* Colores para fondos de iconos */
         .bg-light-blue { background-color: #e3f2fd; }
         .bg-light-green { background-color: #e8f5e9; }
         .bg-light-cyan { background-color: #e0f7fa; }
@@ -303,3 +303,84 @@
             border: 1px solid #dee2e6;
             border-radius: 0.25rem;
         }
+
+        /* Small devices: sidebar off-canvas */
+@media (max-width: 767.98px) {
+  #sidebar-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    margin-left: -250px; /* hidden by default */
+    height: 100vh;
+    z-index: 2000;
+    transition: margin 0.25s ease-out;
+  }
+  #wrapper.toggled #sidebar-wrapper {
+    margin-left: 0;
+  }
+  /* Ensure page content scrolls beneath the sidebar */
+  #wrapper.toggled .flex-grow-1 {
+    margin-left: 250px;
+  }
+  /* Make modals fullscreen utility consistent */
+  .modal-fullscreen-sm-down .modal-content {
+    border-radius: 0;
+  }
+  /* Tables: make font slightly smaller for mobile */
+  .table { font-size: 0.92rem; }
+}
+
+/* Overlay para mobile cuando se abre el sidebar */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1400; /* debe quedar por debajo del sidebar (sidebar z-index:2000 en mobile) */
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* Evitar scroll del body cuando se abre el sidebar en móvil */
+.no-scroll {
+  overflow: hidden !important;
+}
+
+/* Transición para ajustar suavemente el contenido principal cuando se despliega el sidebar */
+.flex-grow-1 {
+  min-width: 0; /* importante para que los hijos con overflow se comporten correctamente en flex containers */
+  transition: margin 0.25s ease, transform 0.25s ease;
+}
+
+/* Mejora en la responsividad de tablas: siempre permitir scroll horizontal cuando haga falta */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* scroll suave en iOS */
+}
+
+/* Hacer que la tabla ocupe el ancho necesario según su contenido para forzar el scroll lateral si es más ancha que el contenedor */
+.table-responsive > .table {
+  min-width: max-content;
+}
+
+/* Evitar el wrapping de celdas en pantallas medianas/pequeñas para mantener la tabla en una sola fila lógica y permitir scroll lateral */
+@media (max-width: 1199.98px) {
+  .table-responsive > .table th,
+  .table-responsive > .table td {
+    white-space: nowrap;
+  }
+}
+
+/* Opcional: estilo del scrollbar horizontal (puedes ajustar colores) */
+.table-responsive::-webkit-scrollbar {
+  height: 10px;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+}
+.table-responsive::-webkit-scrollbar-track {
+  background: transparent;
+}

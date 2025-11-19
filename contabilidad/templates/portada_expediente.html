@@ -3,6 +3,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Portada - {{ orden.numero|default:orden.id }}</title>
   <style>
     /* Estilos simples compatibles con xhtml2pdf */
@@ -28,6 +29,9 @@
     .firma img { max-width:260px; max-height:80px; border:1px solid #000; padding:4px; background:#fff; display:block; }
     .footer { margin-top:18px; font-size:11px; color:#666; text-align:center; }
     pre { white-space:pre-wrap; font-family:inherit; font-size:12px; }
+
+    /* Asegurar que imágenes se ajusten en dispositivos pequeños */
+    img { max-width:100%; height:auto; }
   </style>
 </head>
 <body>

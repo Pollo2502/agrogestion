@@ -3,6 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Órdenes de Compra - Sistema de Compras</title>
     <link rel="shortcut icon" href="{% static 'images/favicon.png' %}" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -55,6 +56,10 @@
       <a href="{% url 'logout' %}" class="list-group-item bg-dark text-white"><i class="fas fa-power-off me-2"></i>Cerrar Sesión</a>
     </div>
   </div>
+
+  <!-- Overlay para mobile -->
+  <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
+
   <!-- Contenido principal -->
   <div class="flex-grow-1 p-4">
     <h2 class="mb-4"><i class="fas fa-file-invoice me-2"></i>Aprobar Órdenes de Compra</h2>
@@ -231,7 +236,7 @@
 
 <!-- Modal para visualizar PDF -->
 <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="pdfModalLabel">Visualizar PDF</h5>
@@ -246,7 +251,7 @@
 
 <!-- Modal único de firma -->
 <div class="modal fade" id="firmarModal" tabindex="-1" aria-labelledby="firmarModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
     <div class="modal-content">
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
@@ -274,7 +279,7 @@
 
 <!-- Modal para ver datos de la requisición -->
 <div class="modal fade" id="requisicionModal" tabindex="-1" aria-labelledby="requisicionModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="requisicionModalLabel">Datos de la Requisición</h5>
@@ -326,7 +331,7 @@
 
 <!-- Modal de historial de comentarios -->
 <div class="modal fade" id="comentariosModal" tabindex="-1" aria-labelledby="comentariosModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="comentariosModalLabel">Historial de Comentarios de Rechazo</h5>
@@ -375,18 +380,43 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('modalOrdenIdRechazo').value = ordenId;
     });
   });
-});
 
-function verRequisicion(codigo, descripcion, usuarioCompras, requisitor, fechaRegistro, fechaRequerida, estado, importancia) {
-  document.getElementById('reqCodigo').innerText = codigo;
-  document.getElementById('reqDescripcion').innerText = descripcion;
-  document.getElementById('reqUsuarioCompras').innerText = usuarioCompras;
-  document.getElementById('reqUsuario').innerText = requisitor;
-  document.getElementById('reqFechaRegistro').innerText = fechaRegistro;
-  document.getElementById('reqFechaRequerida').innerText = fechaRequerida;
-  document.getElementById('reqEstado').innerText = estado;
-  document.getElementById('reqImportancia').innerText = importancia;
-}
+  // Sidebar responsive toggle con overlay y bloqueo de scroll
+  const wrapper = document.getElementById('wrapper');
+  const toggleBtn = document.getElementById('sidebarToggle');
+  const overlay = document.getElementById('sidebarOverlay');
+
+  function closeSidebar() {
+    wrapper.classList.remove('toggled');
+    document.body.classList.remove('no-scroll');
+    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+  }
+  function openSidebar() {
+    wrapper.classList.add('toggled');
+    document.body.classList.add('no-scroll');
+    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  toggleBtn?.addEventListener('click', function(){
+    const isOpen = wrapper.classList.toggle('toggled');
+    if (isOpen) {
+      document.body.classList.add('no-scroll');
+      toggleBtn.setAttribute('aria-expanded', 'true');
+    } else {
+      document.body.classList.remove('no-scroll');
+      toggleBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  overlay?.addEventListener('click', closeSidebar);
+
+  // Cerrar con Escape
+  document.addEventListener('keyup', function(e) {
+    if (e.key === 'Escape') closeSidebar();
+  });
+
+  // Mantener comportamiento actual de toggle en pantallas grandes (no cambia)
+});
 </script>
 </body>
 </html>

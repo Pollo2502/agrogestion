@@ -3,6 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Panel de Usuarios</title>
     <link rel="shortcut icon" href="{% static 'images/favicon.png' %}" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -58,6 +59,10 @@
       <a href="{% url 'logout' %}" class="list-group-item bg-dark text-white"><i class="fas fa-power-off me-2"></i>Cerrar Sesión</a>
     </div>
   </div>
+
+  <!-- Overlay para mobile -->
+  <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
+
   <!-- Contenido principal -->
   <div class="flex-grow-1 p-4">
     <h2 class="mb-4"><i class="fas fa-file-invoice me-2"></i>Aprobar Requisiciones</h2>
@@ -236,7 +241,7 @@
 
 <!-- Modal para visualizar PDF -->
 <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="pdfModalLabel">Visualizar PDF de Requisición</h5>
@@ -251,7 +256,7 @@
 
 <!-- Modal único de firma -->
 <div class="modal fade" id="firmarModal" tabindex="-1" aria-labelledby="firmarModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content">
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
@@ -281,7 +286,7 @@
 
 <!-- Modal único de rechazo para requisiciones -->
 <div class="modal fade" id="rechazarModal" tabindex="-1" aria-labelledby="rechazarModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
     <div class="modal-content">
       <form method="post">
         {% csrf_token %}
@@ -354,15 +359,38 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Sidebar toggle
-  var sidebar = document.getElementById('sidebar-wrapper');
+  // Reemplazado: comportamiento unificado del sidebar (toggle, overlay, no-scroll, Escape)
   var toggleBtn = document.getElementById('sidebarToggle');
-  if (toggleBtn && sidebar) {
+  var overlay = document.getElementById('sidebarOverlay');
+  var wrapper = document.getElementById('wrapper');
+
+  function closeSidebar() {
+    wrapper.classList.remove('toggled');
+    document.body.classList.remove('no-scroll');
+    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+  }
+  function openSidebar() {
+    wrapper.classList.add('toggled');
+    document.body.classList.add('no-scroll');
+    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  if (toggleBtn) {
     toggleBtn.addEventListener('click', function() {
-      sidebar.classList.toggle('collapsed');
-      sidebar.classList.toggle('show');
+      var isOpen = wrapper.classList.toggle('toggled');
+      if (isOpen) {
+        document.body.classList.add('no-scroll');
+        toggleBtn.setAttribute('aria-expanded', 'true');
+      } else {
+        document.body.classList.remove('no-scroll');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+      }
     });
   }
+
+  overlay?.addEventListener('click', closeSidebar);
+  document.addEventListener('keyup', function(e) { if (e.key === 'Escape') closeSidebar(); });
+
   // Para enlaces con clase ver-pdf
   document.querySelectorAll('.ver-pdf').forEach(function(link) {
     link.addEventListener('click', function(e) {

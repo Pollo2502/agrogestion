@@ -101,6 +101,20 @@ def panel_control(request):
             else:
                 messages.success(request, 'Usuario creado correctamente.')
 
+        # Crear CECO (desde modal)
+        elif 'crear_ceco' in request.POST:
+            nombre_ceco = request.POST.get('nombre_ceco', '').strip()
+            if not nombre_ceco:
+                messages.error(request, 'Debe indicar el nombre del CECO.')
+            else:
+                new_ceco, err = crear_ceco(nombre_ceco)
+                if err:
+                    messages.error(request, err)
+                else:
+                    messages.success(request, f'CECO "{new_ceco.nombre}" creado correctamente.')
+                    # refrescar lista de cecos para el render actual
+                    cecos = Ceco.objects.all()
+
         # Editar usuario
         elif 'editar_usuario' in request.POST:
             editar_id = request.POST.get('editar_id')
